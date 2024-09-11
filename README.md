@@ -1,2 +1,3 @@
-# fua-fua-format
-A formatting app that let's you fully configure the code styling to your liking.
+# Fua Fua Format
+Which means "Fluffy Format" in Japanese.
+Is a formatting tool that let's you fully configure the code styling to your liking.
