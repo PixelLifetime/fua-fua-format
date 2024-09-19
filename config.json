@@ -1,0 +1,15 @@
+{
+  "indentation": {
+    "type": "spaces",
+    "size": 4
+  },
+  "importFormat": {
+    "spacesAroundImports": false
+  },
+  "maxLineLength": 80,
+  "objectFormatting": {
+    "maxPropertiesPerLine": 2,
+    "trailingComma": true,
+    "trailingSemicolon": true
+  }
+}

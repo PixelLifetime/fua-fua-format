@@ -1,0 +1,29 @@
+{
+  "name": "formatter",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "glob": "^11.0.0",
+    "htmlparser2": "^9.1.0",
+    "js-beautify": "^1.15.1",
+    "minimatch": "^10.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/commander": "^2.12.2",
+    "@types/glob": "^8.1.0",
+    "@types/js-beautify": "^1.14.3",
+    "@types/minimatch": "^5.1.2",
+    "@types/node": "^22.5.4"
+  }
+}
