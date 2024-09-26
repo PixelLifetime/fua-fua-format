@@ -4,12 +4,19 @@
     "size": 4
   },
   "importFormat": {
-    "spacesAroundImports": false
+    "spacesAroundImports": true
   },
   "maxLineLength": 80,
   "objectFormatting": {
-    "maxPropertiesPerLine": 2,
-    "trailingComma": true,
+    "maxPropertiesPerLine": 3,
+    "trailingComma": true
+  },
+  "typeFormatting": {
+    "maxPropertiesPerLine": 3,
+    "trailingSemicolon": true
+  },
+  "arrayFormatting": {
+    "maxElementsPerLine": 3,
     "trailingSemicolon": true
   }
 }

@@ -1,5 +1,5 @@
 // 10. Format imports and class structures
-export function formatImportsAndClass(content, indentSize = 4) {
+function formatImportsAndClass(content, indentSize = 4) {
   const importRegex = /import\s*{?\s*([^}]*?)\s*}?\s*from\s*['"]([^'"]+)['"]/g;
   content = content.replace(importRegex, (match, imports, fromPath) => {
     const formattedImports = imports

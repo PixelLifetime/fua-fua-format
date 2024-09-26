@@ -1,9 +1,10 @@
-import { Component, ElementRef, inject, OnInit, PLATFORM_ID, ViewChild } from '@angular/core';
+// @ts-nocheck
+import { Component, ElementRef, inject, OnInit, PLATFORM_ID, ViewChild,  } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AudioCollection } from '../../models/audio-collection';
-import { AudioCollectionsService, UpdateAudioCollectionBody, UpdateAudioListBody } from '../../api/audio-collections.service';
+import { AudioCollectionsService, UpdateAudioCollectionBody, UpdateAudioListBody,  } from '../../api/audio-collections.service';
 import { AudioService } from '../../api/audio.service';
-import { Audio, AudioMetadata, CombinedAudioFile } from '../../models/audio-file';
+import { Audio, AudioMetadata, CombinedAudioFile,  } from '../../models/audio-file';
 import { ScrollViewComponent } from '../../../../projects/pixli-angular/src/lib/scroll-view/scroll-view.component';
 import { AudioFileCardComponent } from '../../components/audioFiles/audio-file-card/audio-file-card.component';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -24,7 +25,13 @@ import { Point, Tangent } from '../../components/checkered-canvas/checkered-canv
         styleUrl: './collection.component.scss',
         providers: [WavesurferUtils],
         imports: [
-            FormsModule, ScrollViewComponent, AudioFileCardComponent, CommonModule, DropZoneDirective, AudioFileCardSkeletonComponent, ProgressbarComponent
+            FormsModule,
+            ScrollViewComponent,
+            AudioFileCardComponent,
+            CommonModule,
+            DropZoneDirective,
+            AudioFileCardSkeletonComponent,
+            ProgressbarComponent
         ],
     }
 )
@@ -37,7 +44,7 @@ export class CollectionComponent implements OnInit {
 
     public ambienceReferenceAudioCollection!: AudioCollection;
 
-    private _route = inject(ActivatedRoute);
+    private _route = inject(ActivatedRoute, aa,aa,aaa, asdad, asd);
     private _audioCollectionsService = inject(AudioCollectionsService);
     private _audioService = inject(AudioService);
 
@@ -66,7 +73,9 @@ export class CollectionComponent implements OnInit {
 
     private imageToSet?: File;
 
-    @ViewChild('form', {static: true})
+    @ViewChild('form', {
+            static: true
+        })
     public form!: NgForm;
 
     public nameUpdateField: string = '';
@@ -97,13 +106,19 @@ export class CollectionComponent implements OnInit {
         this._route.queryParams.subscribe(
             (params) => {
                 this._collectionId = params['id'];
-                this._audioCollectionsService.getAudioCollectionById(this._collectionId).subscribe(
+                this._audioCollectionsService
+                .getAudioCollectionById(this._collectionId)
+                .subscribe(
                     {
                         next: (audioCollection) => {
                             this._getImage(audioCollection.imageId);
                             this.audioCollection = audioCollection;
-                            this.editableAudioCollection ={...audioCollection};
-                            this.ambienceReferenceAudioCollection = {...audioCollection};
+                            this.editableAudioCollection = {
+                                ...audioCollection
+                            };
+                            this.ambienceReferenceAudioCollection = {
+                                ...audioCollection
+                            };
                             console.log(audioCollection);
                             this._getAudioCollectionAudioObjects();
                             this.nameUpdateField = audioCollection.name;
@@ -135,7 +150,9 @@ export class CollectionComponent implements OnInit {
 
     private _getAudioCollectionAudioObjects(): void {
         if (this.audioCollection.audioList.length !== 0) {
-            this._audioCollectionsService.getAudioCollectionAudios(this._collectionId).subscribe(
+            this._audioCollectionsService
+            .getAudioCollectionAudios(this._collectionId)
+            .subscribe(
                 {
                     next: (audios) => {
                         this.audioCollection.audioList = audios;
@@ -164,9 +181,15 @@ export class CollectionComponent implements OnInit {
                             (audioFile) => {
                                 this.searchedAudioFiles!.push(
                                     new Audio(
-                                        audioFile.id, {
-                                            audioId: audioFile.id, playbackOffset: 0, volume: 0.5, id: undefined, splinePoints: []
-                                        }, audioFile
+                                        audioFile.id,
+                                        {
+                                            audioId: audioFile.id,
+                                            playbackOffset: 0,
+                                            volume: 0.5,
+                                            id: undefined,
+                                            splinePoints: [],
+                                        },
+                                        audioFile
                                     )
                                 );
                             }
@@ -195,7 +218,9 @@ export class CollectionComponent implements OnInit {
     }
 
     public setImage(): void {
-        this._audioCollectionsService.setAudioCollectionImage(this.audioCollection.id, this.imageToSet!).subscribe(
+        this._audioCollectionsService
+        .setAudioCollectionImage(this.audioCollection.id, this.imageToSet!)
+        .subscribe(
             {
                 next: (audioCollection) => {
                     this._getImage(audioCollection.imageId);
@@ -213,27 +238,29 @@ export class CollectionComponent implements OnInit {
         // ) {
         // 	this._audioService.getAudioFileById(audioFileIdToAdd).subscribe({
         // 		next: (audioFile) => {
-        // 			this.editableAudioCollection.audioList = [...this.editableAudioCollection.audioList, new Audio(new AudioMetadata(0.5, 0), audioFile, audioFileIdToAdd)];
+        // 			this.editableAudioCollection.audioList = [...this.editableAudioCollection.audioList,new Audio(new AudioMetadata(0.5, 0),audioFile,audioFileIdToAdd)];
         // 		},
         // 	});
         // }
         this._audioService.getAudioFileById(audioFileIdToAdd).subscribe(
             {
                 next: (audioFile) => {
-                    //this.editableAudioCollection.audioList = [...this.editableAudioCollection.audioList, new Audio(new AudioMetadata(0.5, 0), audioFile, audioFileIdToAdd)];
+                    //this.editableAudioCollection.audioList = [...this.editableAudioCollection.audioList,new Audio(new AudioMetadata(0.5, 0),audioFile,audioFileIdToAdd)];
                     const temporaryId = uuidv4();
                     this.editableAudioCollection.audioList = [
-                        ...this.editableAudioCollection.audioList, new Audio(
-                            audioFileIdToAdd, new AudioMetadata(
-                                audioFileIdToAdd, 0.5, 0, [
+                        ...this.editableAudioCollection.audioList,new Audio(
+                            audioFileIdToAdd,new AudioMetadata(
+                                audioFileIdToAdd,0.5,0,[
                                     new Point(
-                                        0, 1, new Tangent(0, 0), new Tangent(0, 0), false
-                                    ), new Point(
-                                        audioFile.duration / 1000, 1, new Tangent(0, 0), new Tangent(0, 0), false
+                                        0,1,new Tangent(0, 0),new Tangent(0, 0),false
+                                    ),new Point(
+                                        audioFile.duration / 1000,1,new Tangent(0, 0),new Tangent(0, 0),false
                                     )
-                                ], temporaryId
-                            ), audioFile
-                        )
+                                ],
+                                temporaryId
+                            ),
+                            audioFile
+                        ),
                     ];
                 },
             }
@@ -242,7 +269,8 @@ export class CollectionComponent implements OnInit {
 
     public deleteAudioFromCollection(audioFileIdToDelete: string): void {
         console.log(this.editableAudioCollection.audioList);
-        this.editableAudioCollection.audioList = this.editableAudioCollection.audioList.filter(
+        this.editableAudioCollection.audioList =
+        this.editableAudioCollection.audioList.filter(
             (audioFile) => {
                 return audioFile.audioMetadata.id !== audioFileIdToDelete;
             }
@@ -252,14 +280,16 @@ export class CollectionComponent implements OnInit {
     private _getAudioCollectionUpdateParams(): UpdateAudioCollectionBody {
         this.editableAudioCollection.name = this.nameUpdateField;
         this.editableAudioCollection.description = this.descriptionUpdateField;
-        const audioCollectionUpdateParams: UpdateAudioCollectionBody ={id: this._collectionId};
+
+        const audioCollectionUpdateParams: UpdateAudioCollectionBody = { id: this._collectionId, };
 
         if (this.audioCollection.name !== this.editableAudioCollection.name) {
             audioCollectionUpdateParams.name = this.editableAudioCollection.name;
         }
 
         if (this.audioCollection.audioList !== this.editableAudioCollection.audioList) {
-            const audioList: UpdateAudioListBody[] = [];
+            const audioList: UpdateAudioListBody[] = [
+            ];
 
             this.editableAudioCollection.audioList.forEach(
                 (audio) => {
@@ -277,8 +307,10 @@ export class CollectionComponent implements OnInit {
             audioCollectionUpdateParams.audioList = audioList;
         }
 
-        if (this.audioCollection.description !== this.editableAudioCollection.description) {
-            audioCollectionUpdateParams.description = this.editableAudioCollection.description;
+        if (this.audioCollection.description !==
+            this.editableAudioCollection.description) {
+            audioCollectionUpdateParams.description =
+            this.editableAudioCollection.description;
         }
 
         if (this.audioCollection.tags !== this.editableAudioCollection.tags) {
@@ -290,22 +322,34 @@ export class CollectionComponent implements OnInit {
 
     public handleUpdateAudioCollection(confirmed: boolean): void {
         if (confirmed) {
-            const audioCollectionUpdateParams: UpdateAudioCollectionBody = this._getAudioCollectionUpdateParams();
+            const audioCollectionUpdateParams: UpdateAudioCollectionBody =
+            this._getAudioCollectionUpdateParams();
 
             if (this.imageToSet) {
                 this.setImage();
             }
 
-            if (audioCollectionUpdateParams.name === undefined && audioCollectionUpdateParams.audioList === undefined && audioCollectionUpdateParams.description === undefined && audioCollectionUpdateParams.tags === undefined) {
+            if (audioCollectionUpdateParams.name === undefined &&
+                audioCollectionUpdateParams.audioList === undefined &&
+                audioCollectionUpdateParams.description === undefined &&
+                audioCollectionUpdateParams.tags === undefined) {
                 console.log('nothing to update there');
             } else {
-                this._audioCollectionsService.updateAudioCollection(
-                    audioCollectionUpdateParams.id, audioCollectionUpdateParams.name, audioCollectionUpdateParams.audioList, audioCollectionUpdateParams.description, audioCollectionUpdateParams.tags
-                ).subscribe(
+                this._audioCollectionsService
+                .updateAudioCollection(
+                    audioCollectionUpdateParams.id,
+                    audioCollectionUpdateParams.name,
+                    audioCollectionUpdateParams.audioList,
+                    audioCollectionUpdateParams.description,
+                    audioCollectionUpdateParams.tags
+                )
+                .subscribe(
                     {
                         next: (updatedAudioCollection) => {
                             this.audioCollection = updatedAudioCollection;
-                            this.editableAudioCollection ={...updatedAudioCollection};
+                            this.editableAudioCollection = {
+                                ...updatedAudioCollection
+                            };
                             this._getAudioCollectionAudioObjects();
                             this.nameUpdateField = this.audioCollection.name;
                             this.descriptionUpdateField = this.audioCollection.description;
@@ -320,7 +364,8 @@ export class CollectionComponent implements OnInit {
 
     public handleAudioVolumeChange(updatedAudio: Audio): void {
         if (this.editingMode) {
-            this.editableAudioCollection.audioList = this.editableAudioCollection.audioList.map(
+            this.editableAudioCollection.audioList =
+            this.editableAudioCollection.audioList.map(
                 (audio) => {
                     if (audio.audioMetadata.id === updatedAudio.audioMetadata.id) {
                         return updatedAudio;
@@ -344,7 +389,8 @@ export class CollectionComponent implements OnInit {
 
     public handleAudioPlaybackOffsetChange(updatedAudio: Audio): void {
         if (this._editingMode) {
-            this.editableAudioCollection.audioList = this.editableAudioCollection.audioList.map(
+            this.editableAudioCollection.audioList =
+            this.editableAudioCollection.audioList.map(
                 (audio) => {
                     if (audio.audioMetadata.id === updatedAudio.audioMetadata.id) {
                         return updatedAudio;
@@ -380,7 +426,8 @@ export class CollectionComponent implements OnInit {
     public ambienceDuration!: number;
 
     private async _decodeAudioFiles(): Promise<CombinedAudioFile[]> {
-        const files: CombinedAudioFile[] = [];
+        const files: CombinedAudioFile[] = [
+        ];
 
         // Uploading files from the server... (0)
         await Promise.all(
@@ -391,23 +438,31 @@ export class CollectionComponent implements OnInit {
 
                         files.push(
                             new CombinedAudioFile(
-                                audioFile.audioMetadata.playbackOffset, audioFile.audioMetadata.volume, audioFile.audioMetadata.splinePoints, audioFile.audio?.fileBytes
+                                audioFile.audioMetadata.playbackOffset,
+                                audioFile.audioMetadata.volume,
+                                audioFile.audioMetadata.splinePoints,
+                                audioFile.audio?.fileBytes
                             )
                         );
                     } else {
-                        const fileBytes = await this._audioService.getAudio(audioFile.audio!.fileId).toPromise();
+                        const fileBytes = await this._audioService
+                        .getAudio(audioFile.audio!.fileId)
+                        .toPromise();
                         audioFile.audio!.fileBytes = fileBytes;
 
                         this.audioCollection.audioList[index] = audioFile;
 
                         files.push(
                             new CombinedAudioFile(
-                                audioFile.audioMetadata.playbackOffset, audioFile.audioMetadata.volume, audioFile.audioMetadata.splinePoints, fileBytes
+                                audioFile.audioMetadata.playbackOffset,
+                                audioFile.audioMetadata.volume,
+                                audioFile.audioMetadata.splinePoints,
+                                fileBytes
                             )
                         );
                     }
                 }
-            ),
+            )
         );
 
         // Converting audio files... (1)
@@ -430,7 +485,11 @@ export class CollectionComponent implements OnInit {
                             reader.onload = () => {
                                 return resolve(
                                     new CombinedAudioFile(
-                                        file.playbackOffset, file.volume, file.splinePoints, undefined, reader.result as ArrayBuffer
+                                        file.playbackOffset,
+                                        file.volume,
+                                        file.splinePoints,
+                                        undefined,
+                                        reader.result as ArrayBuffer
                                     )
                                 );
                             };
@@ -439,7 +498,7 @@ export class CollectionComponent implements OnInit {
                         }
                     );
                 }
-            ),
+            )
         );
 
         // Decoding audio files... (2)
@@ -449,10 +508,15 @@ export class CollectionComponent implements OnInit {
             buffers.map(
                 async (buffer) => {
                     return new CombinedAudioFile(
-                        buffer.playbackOffset, buffer.volume, buffer.splinePoints,  undefined, undefined, await this._audioCtx.decodeAudioData(buffer.predecodedBuffer!)
+                        buffer.playbackOffset,
+                        buffer.volume,
+                        buffer.splinePoints,
+                        undefined,
+                        undefined,
+                        await this._audioCtx.decodeAudioData(buffer.predecodedBuffer!)
                     );
-                },
-            ),
+                }
+            )
         );
     }
 
@@ -469,7 +533,7 @@ export class CollectionComponent implements OnInit {
                 (buffer) => {
                     return buffer.decodedBuffer!.length;
                 }
-            ),
+            )
         );
 
         const outputBuffer = this._audioCtx.createBuffer(2, longestBufferLength, this._audioCtx.sampleRate);
@@ -481,9 +545,12 @@ export class CollectionComponent implements OnInit {
             (buffer) => {
                 const decodedBuffer = buffer.decodedBuffer!;
                 const bufferLength = decodedBuffer.length;
-                const offsetSamples = (buffer.playbackOffset / 1000) * decodedBuffer.sampleRate;
+                const offsetSamples =
+                (buffer.playbackOffset / 1000) * decodedBuffer.sampleRate;
 
-                for (let channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+                for (let channel = 0;
+                    channel < outputBuffer.numberOfChannels;
+                    channel++) {
                     const outputData = outputBuffer.getChannelData(channel);
 
                     if (channel < decodedBuffer.numberOfChannels) {
@@ -492,7 +559,11 @@ export class CollectionComponent implements OnInit {
                         for (let i = 0; i < outputBuffer.length; i++) {
                             const inputIndex = (i + offsetSamples) % bufferLength;
 
-                            outputData[i] += inputData[inputIndex] * buffer.volume * this.interpolate(inputIndex / bufferLength, buffer.splinePoints).y;
+                            outputData[i] +=
+                            inputData[inputIndex] *
+                            buffer.volume *
+                            this.interpolate(inputIndex / bufferLength, buffer.splinePoints)
+                            .y;
                         }
                     }
                 }
@@ -509,7 +580,9 @@ export class CollectionComponent implements OnInit {
 
         this.isLoadingAmbience = false;
 
-        this.ambienceReferenceAudioCollection ={...this.audioCollection};
+        this.ambienceReferenceAudioCollection = {
+            ...this.audioCollection
+        };
     }
 
     /**
@@ -541,7 +614,6 @@ export class CollectionComponent implements OnInit {
         return position;
     }
 
-
     /**
     * Interpolates a point on the spline based on a parameter t.
     * This method finds the appropriate segment of the spline to interpolate between and returns
@@ -554,7 +626,8 @@ export class CollectionComponent implements OnInit {
         const segmentLength = 1 / (splinePoints.length - 1);
 
         const segmentIndex = Math.min(
-            Math.floor(t / segmentLength), splinePoints.length - 1
+            Math.floor(t / segmentLength),
+            splinePoints.length - 1
         );
         const localT = (t % segmentLength) / segmentLength;
 
@@ -576,7 +649,10 @@ export class CollectionComponent implements OnInit {
         }
 
         return {
-            x: x, y: y, leftTangent: m0Left, rightTangent: m0Right
+            x: x,
+            y: y,
+            leftTangent: m0Left,
+            rightTangent: m0Right,
         };
     }
 
@@ -586,7 +662,9 @@ export class CollectionComponent implements OnInit {
     public async _loadAudio(buffer: AudioBuffer): Promise<void> {
         const convertedAudio = this._audioBufferToWav(buffer);
 
-        const blob = new Blob([convertedAudio], {type: 'audio/wav'});
+        const blob = new Blob([convertedAudio], {
+                type: 'audio/wav'
+            });
 
         const url = URL.createObjectURL(blob);
 
@@ -596,7 +674,9 @@ export class CollectionComponent implements OnInit {
             this.waveSurfer.destroy();
         }
 
-        await this._wavesurferUtils.waveformFromFile(url, this._waveformContainer).then(
+        await this._wavesurferUtils
+        .waveformFromFile(url, this._waveformContainer)
+        .then(
             (waveSurfer) => {
                 return (this._waveSurfer = waveSurfer);
             }
@@ -618,11 +698,11 @@ export class CollectionComponent implements OnInit {
         pos = 0;
 
         // write WAVE header
-        setUint32(0x46464952); // "RIFF"
+        setUint32(0x46464952); // 'RIFF'
         setUint32(length - 8); // file length - 8
-        setUint32(0x45564157); // "WAVE"
+        setUint32(0x45564157); // 'WAVE'
 
-        setUint32(0x20746d66); // "fmt " chunk
+        setUint32(0x20746d66); // 'fmt ' chunk
         setUint32(16); // length = 16
         setUint16(1); // PCM (uncompressed)
         setUint16(numOfChan);
@@ -631,7 +711,7 @@ export class CollectionComponent implements OnInit {
         setUint16(numOfChan * 2); // block-align
         setUint16(16); // 16-bit (hardcoded in this demo)
 
-        setUint32(0x61746164); // "data" - chunk
+        setUint32(0x61746164); // 'data' - chunk
         setUint32(length - pos - 4); // chunk length
 
         // write interleaved data
@@ -645,7 +725,9 @@ export class CollectionComponent implements OnInit {
             for (i = 0; i < numOfChan; i++) {
                 // interleave channels
                 sample = Math.max(
-                    -1, Math.min(1, channels[i][offset])
+                    -1, Math.min(1, channels[i][
+                            offset
+                        ])
                 ); // clamp
                 sample = (sample < 0 ? sample * 0x8000: sample * 0x7fff) | 0; // scale to 16-bit signed int
                 view.setInt16(pos, sample, true); // write 16-bit sample
@@ -718,11 +800,13 @@ export class CollectionComponent implements OnInit {
     }
 
     public incrementAudioCollectionPlays(): void {
-        this._audioCollectionsService.incrementAudioCollectionPlays(this.audioCollection.id).subscribe(
+        this._audioCollectionsService
+        .incrementAudioCollectionPlays(this.audioCollection.id)
+        .subscribe(
             {
                 next: () => {
                     // this.audioCollection.plays! = this.audioCollection.plays + 1;
-                }
+                },
             }
         );
     }
