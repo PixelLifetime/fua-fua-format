@@ -1,5 +1,29 @@
 import { FormatterConfig } from "../../configTypes";
 
+class Node {
+  type: "root" | "curly" | "square" | "round" | "unknown";
+  start: number;
+  end: number;
+  parent: Node | null;
+  children: Node[];
+  depth: number;
+  formattedContent: string;
+
+  constructor(
+    type: "root" | "curly" | "square" | "round" | "unknown",
+    start: number,
+    parent: Node | null
+  ) {
+    this.type = type;
+    this.start = start;
+    this.end = -1; // To be set when the node is closed
+    this.parent = parent;
+    this.children = [];
+    this.depth = 0;
+    this.formattedContent = "";
+  }
+}
+
 export class Formatters {
   /**
    * Function that fixes spacing around type signatures. It converts:
@@ -20,346 +44,164 @@ export class Formatters {
   }
 
   /**
-   * Function that formats the given content by adjusting indentation and spacing around
-   * braces and parentheses. It processes the entire file, adding new lines, indentation,
-   * and removing unnecessary spaces based on configuration settings.
-   *
-   * It also applies regex rules to check for specific patterns in the code (e.g., function
-   * declarations, control structures) and formats them accordingly.
+   * Function that formats the given content by parsing it into a tree of nodes and
+   * applying formatting rules starting from the deepest nodes.
    *
    * @param content - The content string (usually code) that needs to be formatted.
    * @param config - The configuration object that dictates the formatting rules (e.g., indentation size, type, object formatting).
    * @returns The formatted content string with proper indentation, new lines, and spacing.
    */
   public fixIndentation(content: string, config: FormatterConfig): string {
-    const lines = content.split("\n");
-    const indentedLines: string[] = [];
-    let currentIndentLevel = 0;
-    const indentSize = config.indentation.size;
-    const indentType = config.indentation.type;
-    const indentString =
-      indentType === "tabs" ? "\t".repeat(indentSize) : " ".repeat(indentSize);
-    const functionDeclarationRegex = /(\w+\([^)]*\)\s*)(\s*:\s*[^{]*)?{/;
-    const controlStructuresRegex = /\w+\s+\(([^,)]+)\)\s+\{/;
-    const squareBracesRegex = /^([ \t]*)([\s\S][^\n/]*)\[([^/(\]]*)\]/gm;
-    // const roundBracesRegex =
-    //   /^([ \t]*)([\s\S][^\n/]*)\(([^/(\]]*)\)/gm;
-    const roundBracesRegex =
-    /\(\s*([^,()]+)?(?:\s*,\s*([^,()]+))?(?:\s*,\s*([^,()]+))?\s*\)/g;
-    const curlyBracesRegex =
-      /\{\s*([^,;{}]+)?(?:\s*,\s*([^,;{}]+))?(?:\s*,\s*([^,;{}]+))?\s*\}/g;
 
-    const objectAssignRegex =
-      /([ \t]*)(\b(?:const|let|var)\s+\w+(?:\s*:\s*(?:\{[\s\S]*?\}|\w+))?\s*=\s*)\{\s*((?:[^{}]*?(?:,)?\s*)+)\}/gm;
-    const typeDefinitionRegex =
-      /^([ \t]*)(\b(?:const|let|var)\s+\w+)\s*:\s*(\{[\s\S]*?\})(.*$)/gm;
+    const rootNode = this.parseCodeToTree(content);
 
-    const countChildrenInObject = /\{\s*((?:[^{}]*?(?:,)\s*){3,})\}/;
+    this.assignDepthLevels(rootNode, 0);
 
-    const interpolationRegex = /\$\{(\s*.*\s*)\}/g;
-    const importRegex =
-      /import\s*{?\s*([^}]*?)\s*}?\s*from\s*['"]([^'"]+)['"](;)?/g;
+    const formattedContent = this.formatNode(rootNode, content, config);
 
-    for (let line of lines) {
-      line = line.trim(); // Trim the line
-      let resultLine = indentString.repeat(currentIndentLevel); // Start with current indentation
-      let i = 0;
+    // Return the formatted content
+    return formattedContent;
+  }
 
-      // Skip empty lines if desired
-      if (line === "") {
-        indentedLines.push("");
-        continue;
-      }
+  private parseCodeToTree(content: string): Node {
+    const rootNode = new Node("root", 0, null);
+    let currentNode = rootNode;
+    const stack: Node[] = [];
+    let i = 0;
 
-      // Corrected comment detection
-      if (/^\s*(\/\/|\/\*|\*|\*\/)/.test(line)) {
-        indentedLines.push(resultLine + line);
-        continue;
-      }
+    let inSingleQuoteString = false;
+    let inDoubleQuoteString = false;
+    let inTemplateString = false;
+    let inSingleLineComment = false;
+    let inMultiLineComment = false;
 
-      // Handle function declarations
-      if (functionDeclarationRegex.test(line)) {
-        indentedLines.push(resultLine + line);
-        currentIndentLevel++;
-        continue;
-      }
+    while (i < content.length) {
+      const char = content[i];
+      const prevChar = i > 0 ? content[i - 1] : "";
 
-      // Handle control structures
-      if (controlStructuresRegex.test(line)) {
-        indentedLines.push(resultLine + line);
-        currentIndentLevel++;
-        continue;
-      }
+      // Handle comments and strings
+      if (inSingleLineComment) {
+        if (char === "\n") {
+          inSingleLineComment = false;
+        }
+      } else if (inMultiLineComment) {
+        if (char === "*" && content[i + 1] === "/") {
+          inMultiLineComment = false;
+          i++; // Skip '/'
+        }
+      } else if (inSingleQuoteString) {
+        if (char === "'" && prevChar !== "\\") {
+          inSingleQuoteString = false;
+        }
+      } else if (inDoubleQuoteString) {
+        if (char === '"' && prevChar !== "\\") {
+          inDoubleQuoteString = false;
+        }
+      } else if (inTemplateString) {
+        if (char === "`" && prevChar !== "\\") {
+          inTemplateString = false;
+        }
+      } else {
 
-      // Process each character in the line
-      while (i < line.length) {
-        const char = line[i];
-
-        if (char === "{" || char === "(" || char === "[") {
-          // Add the character to resultLine
-          resultLine += char;
-          i++;
-
-          // Increase indent level
-          currentIndentLevel++;
-
-          // Check if there's already a newline after the opening brace
-          if (i < line.length && (line[i] === "\n" || line[i] === "\r")) {
-            // There's already a newline, so we don't need to add one
-            while (i < line.length && (line[i] === "\n" || line[i] === "\r")) {
-              // Add existing newline characters to resultLine
-              resultLine += line[i];
-              i++;
-            }
-            // Start a new line with increased indentation
-            resultLine += indentString.repeat(currentIndentLevel);
-          } else {
-            // No newline present, so we add one
-            // Push the current line to indentedLines
-            if (resultLine.trim() !== "") {
-              indentedLines.push(resultLine);
-            }
-            // Start a new line with increased indentation
-            resultLine = indentString.repeat(currentIndentLevel);
-          }
+        if (char === "/" && content[i + 1] === "/") {
+          inSingleLineComment = true;
+          i++; // Skip '/'
+        } else if (char === "/" && content[i + 1] === "*") {
+          inMultiLineComment = true;
+          i++; // Skip '*'
+        } else if (char === "'") {
+          inSingleQuoteString = true;
+        } else if (char === '"') {
+          inDoubleQuoteString = true;
+        } else if (char === "`") {
+          inTemplateString = true;
+        } else if (char === "{" || char === "(" || char === "[") {
+  
+          const type =
+            char === "{" ? "curly" : char === "(" ? "round" : "square";
+          const newNode = new Node(type, i, currentNode);
+          currentNode.children.push(newNode);
+          stack.push(currentNode);
+          currentNode = newNode;
         } else if (char === "}" || char === ")" || char === "]") {
-          // Push the current line to indentedLines if not empty
-          if (resultLine.trim() !== "") {
-            indentedLines.push(resultLine);
-          }
 
-          // Decrease indent level
-          currentIndentLevel = Math.max(currentIndentLevel - 1, 0);
-
-          // Start a new line with decreased indentation
-          resultLine = indentString.repeat(currentIndentLevel);
-
-          // Add the closing character
-          resultLine += char;
-          i++;
-        } else {
-          // Add the character to resultLine
-          resultLine += char;
-          i++;
+          currentNode.end = i;
+          currentNode = stack.pop() || rootNode;
         }
       }
-
-      // After processing the line, add the resultLine to indentedLines if not empty
-      if (resultLine.trim() !== "") {
-        indentedLines.push(resultLine);
-      }
+      i++;
     }
 
-    let completedIndentedLines = indentedLines.join("\n");
+    return rootNode;
+  }
 
-    // Format square braces
-    completedIndentedLines = completedIndentedLines.replace(
-      squareBracesRegex,
-      (_, indentation, line, elementsStr) => {
-        const maxPropertiesPerLine =
-          config.arrayFormatting.maxElementsPerLine;
-        // childrenStr = this._splitByTopLevelCommas(childrenStr);
-        const elements = elementsStr
-        .split(/\s*,\s*/)
-        .filter(Boolean)
-        .map((prop) => prop.trim());
+  private assignDepthLevels(node: Node, depth: number) {
+    node.depth = depth;
+    for (const child of node.children) {
+      this.assignDepthLevels(child, depth + 1);
+    }
+  }
 
-        console.log(_, indentation, line, elements);
-        if (elements.length > maxPropertiesPerLine) {
-          // Multi-line formatting
-          const formattedChildren = elements
-            .map((prop, index) => {
-              const comma =
-                index < elements.length - 1
-                ? ","
-                : "";
-              return indentation + indentString + prop + comma + "\n";
-            })
-            .join("");
+  private formatNode(
+    node: Node,
+    content: string,
+    config: FormatterConfig
+  ): string {
 
-          return `${indentation}${line}[\n${formattedChildren}${indentation}]`;
-        } else {
-           // Format inline
-           const formattedChildren = elements.map((child, index) => {
-  
-            const comma =
-            index < elements.length - 1
-            ? ","
-            : ""
-            return child + comma;
-     
-           })
-           .join("");
-           return `${indentation}${line}[${formattedChildren}]`;
-        }
+    if (node.children.length === 0) {
+      node.formattedContent = content.substring(node.start, node.end + 1);
+      return node.formattedContent;
+    }
+
+    let result = "";
+    let lastIndex = node.start + 1;
+
+    for (const child of node.children) {
+      const beforeChild = content.substring(lastIndex, child.start);
+      result += beforeChild;
+
+      const formattedChild = this.formatNode(child, content, config);
+      result += formattedChild;
+
+      lastIndex = child.end + 1;
+    }
+
+
+    const afterLastChild = content.substring(lastIndex, node.end);
+    result += afterLastChild;
+
+    let innerContent = result.trim();
+
+    if (
+      node.type === "curly" ||
+      node.type === "square" ||
+      node.type === "round"
+    ) {
+      // Split into lines
+      let lines = innerContent.split("\n");
+
+      // Indent lines based on node depth
+      const indentSize = config.indentation.size;
+      const indentType = config.indentation.type;
+      const indentString =
+        indentType === "tabs" ? "\t" : " ".repeat(indentSize);
+      const indent = indentString.repeat(node.depth);
+
+      for (let i = 0; i < lines.length; i++) {
+        lines[i] = indent + lines[i].trim();
       }
-    );
 
-    // // Format round braces
-    // completedIndentedLines = completedIndentedLines.replace(
-    //   roundBracesRegex,
-    //   (_, indentation, line, childrenStr) => {
-    //     const maxPropertiesPerLine =
-    //       config.objectFormatting.maxPropertiesPerLine;
-    //     const children = childrenStr
-    //     .split(',')
-    //     .map((prop) => prop.trim())
-    //     .filter((prop) => prop !== "");
-    //     console.log(children, childrenStr);
+      // Reconstruct the content
+      innerContent =
+        "\n" + lines.join("\n") + "\n" + indentString.repeat(node.depth - 1);
+    }
 
-    //     if (children.length > maxPropertiesPerLine) {
-    //       // Multi-line formatting
-    //       const formattedChildren = children
-    //         .map((prop, index) => {
-    //           const comma =
-    //             index < children.length - 1
-    //             ? ","
-    //             : "";
-    //           return indentation + indentString + prop + comma + "\n";
-    //         })
-    //         .join("");
+    // Add the opening and closing braces
+    const openBrace = content[node.start];
+    const closeBrace = content[node.end];
 
-    //       return `${indentation}${line}(\n${formattedChildren}${indentation})`;
-    //     } else {
-    //         // Format inline
-    //         const formattedChildren = children.map((child, index) => {
-  
-    //         const comma =
-    //         index < children.length - 1
-    //         ? ","
-    //         : ""
-    //         return child + comma;
-      
-    //         })
-    //         .join("");
-    //         return `${indentation}${line}(${formattedChildren})`;
-    //     }
-    //   }
-    // );
-
-    // Format round braces
-    completedIndentedLines = completedIndentedLines.replace(
-      roundBracesRegex,
-      (match, p1, p2, p3) => {
-        // Collect the captured parameters
-        const params = [p1, p2, p3]
-          .filter((item) => item && item.trim() !== "")
-          .map((item) => item.trim());
-
-        // Reconstruct the parameters with trimmed values
-        return `(${params.join(", ")})`;
-      }
-    );
-
-    // // Format curly braces
-    // completedIndentedLines = completedIndentedLines.replace(
-    //   curlyBracesRegex,
-    //   (match, p1, p2, p3) => {
-    //     const items = [p1, p2, p3]
-    //       .filter((item) => item && item.trim() !== "")
-    //       .map((item) => item.trim());
-    //     return `{${items.join(", ")}}`;
-    //   }
-    // );
-
-    completedIndentedLines = completedIndentedLines.replace(interpolationRegex, (match, content) => {
-      return '$' + `{${content.trim()}}`;
-    })
-
-    completedIndentedLines = completedIndentedLines.replace(
-      typeDefinitionRegex,
-      (match, indentation, declaration, typeDefinition, restOfLine) => {
-        // Remove outer braces and trim
-        let typeContent = typeDefinition.slice(1, -1).trim();
-
-        // Split properties by semicolons
-        const properties = typeContent
-          .split(";")
-          .map((prop) => prop.trim())
-          .filter((prop) => prop !== "");
-
-        const maxPropertiesPerLine =
-          config.objectFormatting.maxPropertiesPerLine;
-        const trailingSemicolon = config.typeFormatting.trailingSemicolon;
-
-        let formattedTypeDefinition;
-
-        if (properties.length > maxPropertiesPerLine) {
-          // Multi-line formatting
-          const formattedProperties = properties
-            .map((prop, index) => {
-              const semicolonStr = trailingSemicolon
-                ? ";"
-                : index < properties.length - 1
-                ? ";"
-                : "";
-              return indentation + indentString + prop + semicolonStr + "\n";
-            })
-            .join("");
-
-          formattedTypeDefinition = `{\n${formattedProperties}${indentation}}`;
-        } else {
-          // Inline formatting
-          const semicolonStr = trailingSemicolon ? ";" : "";
-          const formattedProperties = properties.join("; ");
-          formattedTypeDefinition = `{ ${formattedProperties}${semicolonStr} }`;
-        }
-
-        // Reconstruct the line
-        return `${indentation}${declaration}: ${formattedTypeDefinition}${restOfLine}`;
-      }
-    );
-
-    completedIndentedLines = completedIndentedLines.replace(
-      objectAssignRegex,
-      (match, indentation, assignment, objectContent) => {
-        objectContent = objectContent.trim();
-
-        const children = objectContent
-          .split(",")
-          .map((child) => child.trim())
-          .filter((child) => child !== "");
-
-        if (children.length > config.objectFormatting.maxPropertiesPerLine) {
-          // Format with new lines and indentation
-          const formattedChildren = children
-            .map((child, index) => {
-              const comma = config.objectFormatting.trailingComma
-                ? ","
-                : index < children.length - 1
-                ? ","
-                : "";
-              return indentation + indentString + child + comma + "\n";
-            })
-            .join("");
-
-          return `${indentation}${assignment}{\n${formattedChildren}${indentation}}`;
-        } else {
-          // Format inline
-          const formattedChildren = children.join(", ");
-          const trailingCommaStr = config.objectFormatting.trailingComma
-            ? ","
-            : "";
-          return `${indentation}${assignment}{ ${formattedChildren}${trailingCommaStr} }`;
-        }
-      }
-    );
-
-    // Format imports
-    completedIndentedLines = completedIndentedLines.replace(
-      importRegex,
-      (_, imports, fromPath) => {
-        const formattedImports = imports
-          .split(",")
-          .map((imp) => imp.trim())
-          .join(", ");
-        return config.importFormat.spacesAroundImports
-          ? `import { ${formattedImports} } from '${fromPath}';`
-          : `import {${formattedImports}} from '${fromPath}';`;
-      }
-    );
-
-    return completedIndentedLines;
+    node.formattedContent = openBrace + innerContent + closeBrace;
+    return node.formattedContent;
   }
 
   /**
@@ -373,35 +215,35 @@ export class Formatters {
 
   private _splitByTopLevelCommas(input: string): string[] {
     const result: string[] = [];
-    let currentPart: string = '';
+    let currentPart: string = "";
     let depth = 0; // Tracks the depth of nested structures (e.g., parentheses)
 
     for (let i = 0; i < input.length; i++) {
-        const char = input[i];
+      const char = input[i];
 
-        if (char === '(' || char === '[' || char === '{') {
-            // Increase depth when entering a nested structure
-            depth++;
-        } else if (char === ')' || char === ']' || char === '}') {
-            // Decrease depth when exiting a nested structure
-            depth--;
-        }
+      if (char === "(" || char === "[" || char === "{") {
+        // Increase depth when entering a nested structure
+        depth++;
+      } else if (char === ")" || char === "]" || char === "}") {
+        // Decrease depth when exiting a nested structure
+        depth--;
+      }
 
-        if (char === ',' && depth === 0) {
-            // Only split on commas that are at the top level (not nested)
-            result.push(currentPart.trim());
-            currentPart = '';
-        } else {
-            // Append the character to the current part
-            currentPart += char;
-        }
+      if (char === "," && depth === 0) {
+        // Only split on commas that are at the top level (not nested)
+        result.push(currentPart.trim());
+        currentPart = "";
+      } else {
+        // Append the character to the current part
+        currentPart += char;
+      }
     }
 
     // Push the final part (after the last comma)
-    if (currentPart.trim() !== '') {
-        result.push(currentPart.trim());
+    if (currentPart.trim() !== "") {
+      result.push(currentPart.trim());
     }
 
     return result;
-}
+  }
 }
