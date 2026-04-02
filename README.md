@@ -1,103 +1,72 @@
 # Fua Fua Format
 
-**"Fua Fua"** means "Fluffy" in Japanese, symbolizing the flexibility and softness of the formatting process. **Fua Fua Format** is a highly customizable code formatter, allowing you to adjust and fine-tune your code styling exactly to your preferences.
+A lightning-fast, highly-permissive, framework-agnostic HTML formatter written in Rust.
+
+Fua Fua Format is designed to handle modern web development structures losslessly. Built on top of [Logos](https://github.com/maciejhirsz/logos) (for fast lexical analysis) and [Rowan](https://github.com/rust-analyzer/rowan) (for a lossless Red-Green syntax tree), it natively understands framework-specific bindings like Angular's `*ngIf` and `[(ngModel)]` or Vue's `@click` and `:disabled`, keeping your formatting completely structurally intact.
 
 ## Features
+- **Framework-Agnostic**: Formats Angular, Vue, and vanilla HTML without choking on structural syntaxes.
+- **Lossless Syntax Tree**: Guarantees zero data loss or layout corruption during formatting. 
+- **Highly Configurable**: Control behavior with extensive config files or CLI arguments.
+- **Microsecond Performance**: Built on top of ultra-fast Rust lexers utilized by `rust-analyzer`.
 
-- Fully configurable code styling.
-- Supports multiple file types (e.g., `.ts`, `.html`).
-- Easy-to-use CLI for formatting and testing.
+## Usage
 
-## How to Use the Formatter Manually
-
-Follow these steps to format your files using **Fua Fua Format**:
-
-### 1. Open the Project Folder in the Console
-
-First, open a terminal and navigate to your project folder. Change the directory to the `src` folder by running:
+You can use the formatter directly through the CLI:
 
 ```bash
-cd C:\Users\User\formatter\src
+# Format a file and output to stdout
+cargo run --bin cli -- --input my_file.html
+
+# Format a file explicitly overriding tab behavior and indent size
+cargo run --bin cli -- --input my_file.html --output formatted.html --use-tabs true
+
+# Format via a configuration file
+cargo run --bin cli -- --input examples/sample.html --config examples/config.json --output examples/formatted.html
 ```
 
-(Adjust the path according to your system's directory structure if needed.)
+### CLI Arguments
+* `-i, --input <file>`: Input file path. Reads from `stdin` if not provided.
+* `-o, --output <file>`: Output file path. Writes to `stdout` by default.
+* `-c, --config <json file>`: Path to your formatting configuration definitions.
+* `--indent-size <number>`: Override the indent size explicitly.
+* `--use-tabs <bool>`: Override the whitespace strategy explicitly.
 
-### 2. Add Files to Format
+## Configuration (`config.json`)
 
-Place the files you want to format inside the `filesForFormatting` folder. This folder is located in the `src` directory of your project.
+Fua Fua Format supports the following configuration properties directly fed via JSON:
 
-### 3. Run the Formatter
-
-To format the files, execute the following command in your terminal:
-
-```bash
-ts-node ./cli.ts format --pattern "/**/*.{html,ts}"
+```json
+{
+  "indent_size": 4,
+  "use_tabs": false,
+  "print_width": 100,
+  "bracket_same_line": false,
+  "wrap_attributes": true,
+  "single_quotes": false,
+  "wrap_content": true
+}
 ```
 
-- `"/**/*.{html,ts}"` is the default pattern, which targets all `.ts` and `.html` files in the `filesForFormatting` directory and its subdirectories.
-- You can change the pattern to fit your needs, targeting specific file types or directories.
+### Configuration Options:
 
-### 4. View the Formatting Results
+* `indent_size` *(Integer, Default: 2)*
+  Number of spaces to use per indentation level. Replaced entirely if `use_tabs` is enabled.
+* `use_tabs` *(Boolean, Default: false)*
+  Whether to format code using `\t` (tabs) instead of whitespace spaces.
+* `print_width` *(Integer, Default: 80)*
+  The line length limit that triggers dynamic wrapping.
+* `bracket_same_line` *(Boolean, Default: false)*
+  When tags break into multiple lines, determines whether the closing bracket `>` goes on the last line next to the attribute, or visually pops onto a new indented line.
+* `wrap_attributes` *(Boolean, Default: false)*
+  Forces elements to break attributes onto newly indented multi-lines instead of preserving them inline.
+* `single_quotes` *(Boolean, Default: false)*
+  Convert all HTML standard `"` double-quotes into `'` single-quotes natively (escapes strictly preserved).
+* `wrap_content` *(Boolean, Default: false)*
+  If an opening tag breaks into multiple lines, this ensures the internal raw text (or immediate child string) drops symmetrically to the next appropriate line down.
 
-After running the command, you'll see the names of the formatted files in the console. If everything is successful, you will get a confirmation message showing the files that were formatted.
+## Architecture
 
----
-
-## Running Tests
-
-You can also run tests to verify the formatter’s functionality. Here’s how:
-
-### 1. Open the Project Folder in the Console
-
-Navigate to the `src` folder in your terminal:
-
-```bash
-cd C:\Users\User\formatter\src
-```
-
-### 2. Run the Test Command
-
-Run the following command to execute the tests:
-
-```bash
-ts-node ./cli.ts test
-```
-
-### 3. View Test Results
-
-After the tests are completed, you’ll see a summary of the results in the console:
-- The total number of tests.
-- The number of tests that succeeded.
-- The number of tests that failed, if any, along with details.
-
----
-
-## Customizing the Formatter
-
-One of the core strengths of **Fua Fua Format** is its flexibility. You can customize the formatting configuration to match your specific coding style. Simply modify the settings in the configuration file (`config.json`), located in the project root, to adjust:
-- Indentation
-- Spacing
-- Object formatting
-- And other style preferences
-
----
-
-## Example
-
-```bash
-# Format files in filesForFormatting folder
-ts-node ./cli.ts format --pattern "/**/*.{html,ts}"
-
-# Run tests
-ts-node ./cli.ts test
-```
-
----
-
-## License
-
-This project is licensed under the MIT License.
-
----
-
-By following these steps, you’ll be able to effortlessly format your code and run tests using **Fua Fua Format**. Enjoy your beautifully formatted, fluffy code!
+Fua Fua Format consists of two primary workspace crates:
+- `core`: Houses the Logos tokenizer (`lexer.rs`), the string tree parser (`parser.rs`), the configuration definitions (`config.rs`), and the top-down indent tree walker formatting engine (`formatter.rs`).
+- `cli`: Houses the fast Clap CLI command interface bridging parameters linearly into the `core` parser.

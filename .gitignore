@@ -1,0 +1,14 @@
+# Cargo build directories
+/target/
+
+# Editor and IDE directories
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# Operating System files
+.DS_Store
+Thumbs.db

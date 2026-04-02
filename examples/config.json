@@ -1,0 +1,9 @@
+{
+  "indent_size": 4,
+  "use_tabs": true,
+  "print_width": 100,
+  "bracket_same_line": false,
+  "wrap_attributes": true,
+  "single_quotes": false,
+  "wrap_content": true
+}
