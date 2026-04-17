@@ -1,7 +1,15 @@
 [workspace]
 members = [
-    "crates/*"
+    "crates/cli",
+    "crates/core",
+    # extism-pdk uses WASM-only host imports and cannot link for native targets.
+    # This crate is in the workspace so it can use workspace deps, but is
+    # excluded from the default build.  Compile it explicitly with:
+    #   cargo build -p fua-plugin-angular --target wasm32-wasip1 --release
+    "crates/fua-plugin-angular",
 ]
+# Only cli + core compile by default; the WASM plugin is opt-in.
+default-members = ["crates/cli", "crates/core"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -9,3 +17,4 @@ rowan = "0.15"
 num-traits = "0.2"
 num-derive = "0.4"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

@@ -1,6 +1,6 @@
 
 @if (this.audioCollectionEditService.editableCollection) {
-	
+
 	<!-- Main collection container -->
 	<main
 		class="flex rounded-xl bg-cover bg-center"
@@ -10,18 +10,31 @@
 			class="flex w-full flex-col justify-center rounded-xl p-4"
 			[ngClass]="{'backdrop-brightness-50': this.imageUrl}"
 		>
-			
+
 			<!-- Grid Layout Container -->
 			<div
 				class="grid h-fit w-full grid-cols-4 gap-8"
 			>
-				
+
 				<!-- Collection Info Area (3/4 width - col-span-3) -->
 				<div
 					class="bg-tertiary-lighter-5% col-span-3 flex flex-col rounded-lg border-2 p-6"
 					[ngClass]="{
-						'border-accent': this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges,
-						'border-quaternary': !(this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges)
+						'border-accent': 
+							(
+								   this.hasNameChanges
+								|| this.hasDescriptionChanges
+								|| this.hasImageChanges
+							),
+						'border-quaternary':
+							(
+								!(
+										this.hasNameChanges
+									||	this.hasDescriptionChanges
+									||	this.hasImageChanges
+								)
+								|| this.hasImageChanges
+							)
 					}"
 				>
 					<div
@@ -31,12 +44,13 @@
 							class="btn-default btn-accent"
 							(click)="this.saveAllChanges()"
 						>
+
 							{{ "submitChanges" | translate }}
 						</button>
 					</div>
-					
+
 					<!-- Success Message -->
-					
+
 					@if (showSaveSuccess) {
 						<div
 							class="absolute -top-3 right-4 z-10"
@@ -44,19 +58,15 @@
 							<div
 								class="animate-fadeIn flex items-center gap-2 rounded-lg bg-green-500 px-4 py-1.5 text-sm text-white shadow-md"
 							>
-								<i
-									class="fa-solid fa-check"
-								></i>
-								<span
-								>
-								Saved successfully</span>
+								<i class="fa-solid fa-check"></i>
+								<span>Saved successfully</span>
 							</div>
 						</div>
 					}
 					<div
 						class="flex w-full justify-between"
 					>
-						
+
 						@if (this.audioCollection) {
 							<div
 								class="flex items-center space-x-2"
@@ -69,37 +79,27 @@
 									tabindex="0"
 								>
 								</i>
-								<p
-									class="text-md text-quinary-darker-5% cursor-pointer"
-								>
-									{{ this.audioCollection.likes }}
-								</p>
+								<p class="text-md text-quinary-darker-5% cursor-pointer">{{ this.audioCollection.likes }}</p>
 							</div>
 							<div
 								class="flex items-center space-x-2"
 							>
-								<i
-									class="fa-solid fa-eye text-quinary-darker-5%"
-								></i>
-								<p
-									class="text-md cursor-pointer text-quinary-darker-5%"
-								>
-									{{ this.totalPlays }}
-								</p>
+								<i class="fa-solid fa-eye text-quinary-darker-5%"></i>
+								<p class="text-md cursor-pointer text-quinary-darker-5%">{{ this.totalPlays }}</p>
 							</div>
 						}
 					</div>
-					
+
 					<!-- Top Row: Name and Controls -->
 					<div
 						class="mb-4 flex items-start justify-between"
 					>
-						
+
 						<!-- Name Field -->
 						<div
 							class="flex-1 text-white"
 						>
-							
+
 							@if (this.isNameEditing) {
 								<input
 									#nameInput
@@ -121,28 +121,27 @@
 										(keyup.enter)="startNameEdit()"
 										tabindex="0"
 									>
+
 										{{ this.audioCollectionEditService.editableCollection.name || "Enter collection name" }}
 									</h2>
-									
+
 									@if (this.hasNameChanges) {
 										<span
 											class="text-accent ml-2"
 											title="Name has unsaved changes"
 										>
-										<i
-											class="fa-solid fa-circle-exclamation"
-										></i>
+											<i class="fa-solid fa-circle-exclamation"></i>
 										</span>
 									}
 								</div>
 							}
 						</div>
-						
+
 						<!-- Control Buttons -->
 						<div
 							class="flex space-x-4"
 						>
-							
+
 							<!-- Play/Stop Button -->
 							<button
 								class="group flex flex-col items-center gap-1"
@@ -151,25 +150,22 @@
 								[class.opacity-50]="!this.audioPlayerService.loaded"
 								(click)="this.toggleAmbiencePreview()"
 							>
-								
+
 								@if (this.isAmbiencePreviewPlaying) {
 									<i
 										class="fa-regular fa-circle-stop text-3xl text-white transition-all group-hover:scale-110"
-									></i>
-									<span
-										class="text-xs text-gray-300"
 									>
-									Stop</span>
+									</i>
+									<span class="text-xs text-gray-300">Stop</span>
 								} @else {
 									<i
 										class="fa-regular fa-circle-play text-3xl text-white transition-all group-hover:scale-110"
-									></i>
-									<span
-										class="text-xs text-gray-300"
-									>Play</span>
+									>
+									</i>
+									<span class="text-xs text-gray-300">Play</span>
 								}
 							</button>
-							
+
 							<!-- Generate Button -->
 							<button
 								(click)="this.generateAmbience()"
@@ -179,15 +175,13 @@
 							>
 								<i
 									class="fa-solid fa-wand-magic-sparkles text-3xl text-white transition-all group-hover:scale-110"
-								></i>
-								<span
-									class="text-xs text-gray-300"
 								>
-								Generate</span>
+								</i>
+								<span class="text-xs text-gray-300">Generate</span>
 							</button>
-							
+
 							<!-- Download Button - Only show when ambience is generated -->
-							
+
 							@if (this.generatedAmibienceUrl && !this.isLoadingAmbience) {
 								<button
 									(click)="this.export()"
@@ -195,21 +189,19 @@
 								>
 									<i
 										class="fa-solid fa-download text-3xl text-white transition-all group-hover:scale-110"
-									></i>
-									<span
-										class="text-xs text-gray-300"
 									>
-									Download</span>
+									</i>
+									<span class="text-xs text-gray-300">Download</span>
 								</button>
 							}
 						</div>
 					</div>
-					
+
 					<!-- Mid Row: Description -->
 					<div
 						class="relative mb-4 flex-1"
 					>
-						
+
 						@if (this.isDescriptionEditing) {
 							<textarea
 								#descriptionInput
@@ -230,39 +222,34 @@
 									(keyup.enter)="startDescriptionEdit()"
 									tabindex="0"
 								>
+
 									{{ this.audioCollectionEditService.editableCollection.description || "Enter collection description" }}
 								</p>
-								
+
 								@if (this.hasDescriptionChanges) {
 									<span
 										class="text-accent absolute right-0 top-0 mr-1"
 										title="Description has unsaved changes"
 									>
-									<i
-										class="fa-solid fa-circle-exclamation"
-									></i>
+										<i class="fa-solid fa-circle-exclamation"></i>
 									</span>
 								}
 							</div>
 						}
 					</div>
-					
+
 					<!-- Bottom Row: Waveform or Loading Area -->
 					<div
 						class="flex h-24 flex-col gap-3"
 					>
-						
+
 						<!-- Loading Progress or Waveform -->
-						
+
 						@if (this.isLoadingAmbience) {
 							<div
 								class="flex w-full flex-col gap-2"
 							>
-								<p
-									class="text-lg text-white"
-								>
-									{{ this.getLoadingStage() }}
-								</p>
+								<p class="text-lg text-white">{{ this.getLoadingStage() }}</p>
 								<div
 									class="h-2 w-full"
 								>
@@ -278,9 +265,9 @@
 							<div
 								class="relative"
 							>
-								
+
 								<!-- Empty state when no ambience -->
-								
+
 								@if (!this.generatedAmibienceUrl) {
 									<div
 										class="bg-tertiary-lighter-10% flex h-24 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-600"
@@ -288,16 +275,14 @@
 										<p
 											class="text-gray-400"
 										>
-											<i
-												class="fa-solid fa-wave-square mr-2"
-											></i>
+											<i class="fa-solid fa-wave-square mr-2"></i>
 											Click "Generate" to create your ambience
 										</p>
 									</div>
 								}
 							</div>
 						}
-						
+
 						<!-- Actual waveform when generated -->
 						<div
 							#waveform
@@ -307,7 +292,7 @@
 						</div>
 					</div>
 				</div>
-				
+
 				<!-- Image Upload Area (1/4 width - col-span-1) -->
 				<div
 					dropZone
@@ -318,16 +303,18 @@
 					}"
 					class="bg-tertiary-lighter-5% relative col-span-1 flex flex-col items-center justify-center rounded-lg border-2"
 				>
-					
+
 					<!-- Current Image Preview or Upload UI -->
 					<div
 						class="flex h-full w-full flex-col items-center justify-center"
 					>
-						
+
 						<!-- Show image if exists -->
-						
-						@if (this.imageUrl && this.audioCollectionEditService.editableCollection.imageId !==
-						"00000000-0000-0000-0000-000000000000") {
+!!!!
+						@if (
+							   this.imageUrl 
+							&& this.audioCollectionEditService.editableCollection.imageId !== "00000000-0000-0000-0000-000000000000"
+						) {
 							<div
 								class="relative h-full w-full"
 							>
@@ -339,14 +326,8 @@
 								<div
 									class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black bg-opacity-50 opacity-0 transition-opacity hover:opacity-100"
 								>
-									<i
-										class="fa-solid fa-cloud-arrow-up mb-2 text-xl text-white"
-									></i>
-									<p
-										class="mb-2 text-sm text-white"
-									>
-										Replace image
-									</p>
+									<i class="fa-solid fa-cloud-arrow-up mb-2 text-xl text-white"></i>
+									<p class="mb-2 text-sm text-white">Replace image</p>
 									<label
 										for="file"
 										class="btn-default hover:bg-primary-lighter cursor-pointer rounded-full bg-primary px-3 py-1 text-xs text-white"
@@ -357,32 +338,19 @@
 								</div>
 							</div>
 						} @else {
-							
+
 							<!-- Upload UI if no image -->
 							<div
 								class="flex h-full flex-col items-center justify-center p-4 text-white"
 							>
-								<i
-									class="fa-solid fa-cloud-arrow-up text-danger mb-4 text-2xl"
-								></i>
-								<p
-									class="mb-3 text-center text-sm"
-								>
-									{{ "dragAndDropFiles" | translate }}
-								</p>
+								<i class="fa-solid fa-cloud-arrow-up text-danger mb-4 text-2xl"></i>
+								<p class="mb-3 text-center text-sm">{{ "dragAndDropFiles" | translate }}</p>
 								<div
 									class="my-1 flex w-full items-center justify-center"
 								>
-									<hr
-										class="border-quinary w-1/3"
-									/>
-									<span
-										class="text-quinary px-2 text-xs"
-									>
-									or</span>
-									<hr
-										class="border-quinary w-1/3"
-									/>
+									<hr class="border-quinary w-1/3" />
+									<span class="text-quinary px-2 text-xs">or</span>
+									<hr class="border-quinary w-1/3" />
 								</div>
 								<label
 									for="file"
@@ -391,11 +359,7 @@
 									Choose
 									file
 								</label>
-								<p
-									class="text-quinary mt-3 text-xs"
-								>
-									Max size: 16MB
-								</p>
+								<p class="text-quinary mt-3 text-xs">Max size: 16MB</p>
 							</div>
 						}
 					</div>
@@ -407,46 +371,69 @@
 						id="file"
 						class="hidden"
 					/>
-					
+
 					<!-- Mark as changed if needed -->
-					
+
 					@if (this.hasImageChanges) {
 						<div
 							class="text-accent absolute right-2 top-2"
 						>
-							<i
-								class="fa-solid fa-circle-exclamation"
-							></i>
+							<i class="fa-solid fa-circle-exclamation"></i>
 						</div>
 					}
 				</div>
-				
+
 				<!-- Timeline Panel (3/4 width - col-span-3) -->
 				<div
-					class="bg-tertiary-lighter-5% relative col-span-3 flex flex-col gap-8 rounded-lg border-2 p-6"
+					class="
+						bg-tertiary-lighter-5% 
+						relative col-span-3 
+						flex flex-col 
+						gap-8 
+						rounded-lg 
+						border-2 
+						p-6
+					"
 					[ngClass]="{
-						'border-quaternary': !this.audioCollectionEditService.changes['presets'] || !this.audioCollectionEditService.changes['audioList'] || !this.audioCollectionEditService.changes['timeline'],
-						'border-accent': this.audioCollectionEditService.changes['presets'] && this.audioCollectionEditService.changes['audioList'] && this.audioCollectionEditService.changes['timeline']
+						'border-quaternary':   
+							(
+								   !this.audioCollectionEditService.changes['presets']
+								|| !this.audioCollectionEditService.changes['audioList']
+								|| !this.audioCollectionEditService.changes['timeline']
+							),
+						'border-accent': 
+							( 
+								   this.audioCollectionEditService.changes['presets']
+								&& this.audioCollectionEditService.changes['audioList']
+								&& this.audioCollectionEditService.changes['timeline']
+							)
 					}"
 				>
-					
+
 					<!-- Main Panel Save Button (absolute position) -->
-					
-					@if (this.audioCollectionEditService.changes["presets"] && this.audioCollectionEditService.changes["audioList"]
-					&& this.audioCollectionEditService.changes["timeline"]) {
+
+					@if (
+						(
+							   this.audioCollectionEditService.changes["presets"] 
+							&& this.audioCollectionEditService.changes["audioList"]
+							&& this.audioCollectionEditService.changes["timeline"]
+						)
+						|| this.aboba === "siuuu"
+						|| (
+							   this.maga === "2024"
+							&& this.maga2 === "2025"
+							&& this.maga3 === "2026?"
+						)
+					) {
 						<button
 							(click)="saveAllChanges()"
 							class="btn-default btn-accent absolute -top-3 right-3 z-10 flex items-center space-x-2 px-3 py-1.5 text-sm"
 						>
-							<i
-								class="fa-solid fa-save mr-2"
-							></i>
-							<span
-							>
-							Save All Changes</span>
+							<i class="fa-solid fa-save mr-2"></i>
+							<span>Save All Changes</span>
 						</button>
 					}
-					
+
 					<!-- Section Header -->
 					<div
 						class="border-tertiary-lighter-20% flex items-center justify-between border-b pb-4"
@@ -454,11 +441,7 @@
 						<div
 							class="flex flex-col"
 						>
-							<h3
-								class="text-quinary text-xl font-semibold"
-							>
-								Timeline & Audio Groups
-							</h3>
+							<h3 class="text-quinary text-xl font-semibold">Timeline & Audio Groups</h3>
 							<p
 								class="text-quinary-darker-10% text-sm"
 							>
@@ -466,7 +449,7 @@
 							</p>
 						</div>
 					</div>
-					
+
 					<!-- Audio Groups Panel -->
 					<div
 						class="bg-tertiary-lighter-10% relative flex flex-col gap-4 rounded-lg border p-4"
@@ -475,7 +458,7 @@
 							'border-tertiary-lighter-20%': !this.audioCollectionEditService.changes['presets'] && !this.audioCollectionEditService.changes['audioList']
 						}"
 					>
-						
+
 						<!-- Presets Component -->
 						<app-presets
 							[presets]="this.audioCollectionEditService.editableCollection.presets"
@@ -487,24 +470,22 @@
 							(presetSave)="this.savePresetChanges()"
 						>
 						</app-presets>
-						
+
 						<!-- Presets Save Button (absolute position) -->
-						
-						@if (this.audioCollectionEditService.changes["presets"] &&
-						!this.audioCollectionEditService.changes["audioList"]) {
+
+						@if (
+							this.audioCollectionEditService.changes["presets"] &&
+							!this.audioCollectionEditService.changes["audioList"]
+						) {
 							<button
 								(click)="savePresetChanges()"
 								class="btn-default btn-accent absolute right-4 top-4 flex items-center space-x-2 px-3 py-1.5 text-sm"
 							>
-								<i
-									class="fa-solid fa-save mr-1"
-								></i>
-								<span
-								>
-								Save Preset Changes</span>
+								<i class="fa-solid fa-save mr-1"></i>
+								<span>Save Preset Changes</span>
 							</button>
 						}
-						
+
 						<!-- Audio Groups Component -->
 						<app-audio-groups
 							[audioGroups]="this.audioCollectionEditService.editableCollection.audioList"
@@ -530,25 +511,23 @@
 							'border-tertiary-lighter-20%': !this.audioCollectionEditService.changes['timeline']
 						}"
 					>
-						
+
 						<!-- Timeline Save Button (absolute position) -->
-						
-						@if (this.audioCollectionEditService.changes["timeline"] &&
-						!this.audioCollectionEditService.changes["presets"] && !this.audioCollectionEditService.changes["audioList"])
-						 {
+
+						@if (
+							this.audioCollectionEditService.changes["timeline"] &&
+							!this.audioCollectionEditService.changes["presets"] &&
+							!this.audioCollectionEditService.changes["audioList"]
+						) {
 							<button
 								(click)="saveTimelineChanges()"
 								class="btn-default btn-accent absolute -top-3 right-3 z-10 flex items-center space-x-2 px-3 py-1.5 text-sm"
 							>
-								<i
-									class="fa-solid fa-save mr-1"
-								></i>
-								<span
-								>
-								Save Timeline Changes</span>
+								<i class="fa-solid fa-save mr-1"></i>
+								<span>Save Timeline Changes</span>
 							</button>
 						}
-						
+
 						<!-- Video Preview and Timeline Container -->
 						<app-timeline
 							(timelineChange)="handleTimelineChange($event)"
@@ -564,25 +543,21 @@
 						Log Changes
 					</button>
 				</div>
-				
+
 				<!-- Audio Library Panel (1/4 width - col-span-1) -->
 				<div
 					class="border-quaternary bg-tertiary-lighter-5% col-span-1 flex flex-col gap-4 rounded-lg border-2 p-6"
 				>
-					
+
 					<!-- Library Header -->
 					<div
 						class="flex flex-col gap-2"
 					>
-						<h3
-							class="text-quinary text-xl font-semibold"
-						>
-							Audio Library
-						</h3>
+						<h3 class="text-quinary text-xl font-semibold">Audio Library</h3>
 						<p
 							class="text-quinary-darker-10% text-sm"
 						>
-							
+
 							@if (activeAudioGroupId) {
 								Adding audio to selected group
 							} @else {
@@ -590,7 +565,7 @@
 							}
 						</p>
 					</div>
-					
+
 					<!-- Search Input -->
 					<div
 						class="text-quinary group flex w-full"
@@ -609,12 +584,10 @@
 							(keyup.enter)="this.initiateSearch()"
 							tabindex="0"
 						>
-							<i
-								class="fa-solid fa-magnifying-glass"
-							></i>
+							<i class="fa-solid fa-magnifying-glass"></i>
 						</div>
 					</div>
-					
+
 					<!-- Search Results Panel -->
 					<div
 						class="border-tertiary-lighter-20% bg-tertiary-lighter-10% flex h-full flex-col rounded-lg border p-4"
@@ -625,47 +598,41 @@
 							<div
 								class="flex items-center gap-2"
 							>
-								<h4
-									class="text-quinary text-lg font-medium"
-								>
-									Results
-								</h4>
+								<h4 class="text-quinary text-lg font-medium">Results</h4>
 							</div>
 						</div>
-						
+
 						<!-- Search Results List -->
 						<pixli-scroll-view
 							visibilityState="always"
 							class="bg-tertiary-lighter-5% h-full w-full overflow-hidden rounded-lg py-2"
 						>
-							
+
 							@if (isLoadingSearchedAudioCollections) {
-								
+
 								<!-- Loading Skeletons -->
 								<div
 									class="flex flex-col gap-3"
 								>
-									
+
 									@for (skeleton of this.repeatSkeleton; track skeleton) {
-										<app-audio-file-card-skeleton
-										>
-										</app-audio-file-card-skeleton>
+										<app-audio-file-card-skeleton></app-audio-file-card-skeleton>
 									}
 								</div>
 							} @else {
-								
+
 								@if (this.searchedAudioFiles && this.searchedAudioFiles.length > 0) {
-									
+
 									<!-- Audio Files List -->
 									<div
 										class="flex flex-col gap-2 px-2"
 									>
-										
+
 										@for (audioFile of this.searchedAudioFiles; track audioFile) {
 											<app-audio-file-card
 												[audioFile]="audioFile"
 											>
-												
+
 												@if (activeAudioGroupId) {
 													<button
 														toolbar-right
@@ -674,33 +641,21 @@
 														(keyup.enter)="this.addAudioToCollection(audioFile.audioMetadata.audioId, activeAudioGroupId)"
 														class="btn-default btn-secondary flex aspect-square h-8 w-8 items-center justify-center rounded-full"
 													>
-														<i
-															class="fa-solid fa-plus text-xs"
-														></i>
+														<i class="fa-solid fa-plus text-xs"></i>
 													</button>
 												}
 											</app-audio-file-card>
 										}
 									</div>
 								} @else {
-									
+
 									<!-- Empty State -->
 									<div
 										class="text-quinary-darker-20% flex h-full flex-col items-center justify-center gap-3 py-8"
 									>
-										<i
-											class="fa-solid fa-music text-4xl opacity-50"
-										></i>
-										<p
-											class="text-center"
-										>
-											No audio files found
-										</p>
-										<p
-											class="text-center text-sm"
-										>
-											Try adjusting your search terms
-										</p>
+										<i class="fa-solid fa-music text-4xl opacity-50"></i>
+										<p class="text-center">No audio files found</p>
+										<p class="text-center text-sm">Try adjusting your search terms</p>
 									</div>
 								}
 							}

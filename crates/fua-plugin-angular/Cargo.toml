@@ -1,0 +1,13 @@
+[package]
+name = "fua-plugin-angular"
+version = "0.1.0"
+edition = "2024"
+
+# cdylib produces the .wasm binary when compiled with --target wasm32-wasip1
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+extism-pdk = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }

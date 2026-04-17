@@ -40,7 +40,7 @@ pub enum Token {
 
     /// Permissive identifiers: tags and attributes.
     /// Captures standard names as well as Angular (*ngIf, [(ngModel)]) and Vue (@click, :disabled).
-    #[regex(r"[a-zA-Z0-9_\-\*\[\]\(\)\@\:\$]+")]
+    #[regex(r"[a-zA-Z0-9_\-\*\[\]\@\:\$]+")]
     Ident,
 
     #[regex(r#""[^"]*""#)]

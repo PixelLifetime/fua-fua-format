@@ -44,7 +44,13 @@ Fua Fua Format supports the following configuration properties directly fed via 
   "bracket_same_line": false,
   "wrap_attributes": true,
   "single_quotes": false,
-  "wrap_content": true
+  "wrap_content": true,
+  "indent_condition_groups": false,
+  "plugin": {
+    "options": {
+      "wrap_conditions_in_parens": false
+    }
+  }
 }
 ```
 
@@ -64,6 +70,10 @@ Fua Fua Format supports the following configuration properties directly fed via 
   Convert all HTML standard `"` double-quotes into `'` single-quotes natively (escapes strictly preserved).
 * `wrap_content` *(Boolean, Default: false)*
   If an opening tag breaks into multiple lines, this ensures the internal raw text (or immediate child string) drops symmetrically to the next appropriate line down.
+* `indent_condition_groups` *(Boolean, Default: false)*
+  When Angular-style control-flow conditions already span multiple lines, indent nested parenthesized groups one extra level so layouts like `(` ... `)` blocks stay visually grouped.
+* `plugin.options.wrap_conditions_in_parens` *(Boolean, Default: false)*
+  For Angular binding values that are already multiline and get condition wrapping, emit an extra parenthesized group around the wrapped expression so object entries can format like `'key':` then `(` ... `)`.
 
 ## Architecture
 
