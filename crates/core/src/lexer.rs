@@ -38,9 +38,9 @@ pub enum Token {
     #[token("=")]
     Equals,
 
-    /// Permissive identifiers: tags and attributes.
-    /// Captures standard names as well as Angular (*ngIf, [(ngModel)]) and Vue (@click, :disabled).
-    #[regex(r"[a-zA-Z0-9_\-\*\[\]\@\:\$]+")]
+    /// Permissive identifiers for tag names, attribute names, and common
+    /// template-extension sigils without hard-coding any framework semantics.
+    #[regex(r"[a-zA-Z0-9_\-\*\[\]\(\)\@\:\$\#\.]+")]
     Ident,
 
     #[regex(r#""[^"]*""#)]
@@ -51,7 +51,7 @@ pub enum Token {
 
     /// Permissive text nodes: capture any sequence of characters not handled by other tokens.
     /// This includes punctuation, non-ascii characters, etc.
-    #[regex(r#"[^a-zA-Z0-9_\-\*\[\]\(\)\@\:\$<>= \t\n\r\f"']+"#)]
+    #[regex(r#"[^a-zA-Z0-9_\-\*\[\]\(\)\@\:\$\#\.<>= \t\n\r\f"']+"#)]
     Text,
 
     /// Fallback for unbalanced quotes or other strict errors
@@ -77,7 +77,7 @@ mod tests {
     fn test_standard_html() {
         let input = r#"<div id="main">hello</div>"#;
         let tokens = lex(input);
-        
+
         assert_eq!(
             tokens,
             vec![
@@ -97,8 +97,8 @@ mod tests {
     }
 
     #[test]
-    fn test_framework_syntax() {
-        let input = r#"<button @click="doIt" *ngIf="show" [(ngModel)]="val" :disabled="true" />"#;
+    fn test_extension_attribute_syntax() {
+        let input = r#"<button @event="doIt" *show="visible" [(model)]="val" :disabled="true" />"#;
         let tokens = lex(input);
 
         assert_eq!(
@@ -107,15 +107,15 @@ mod tests {
                 (Token::OpenAngle, "<"),
                 (Token::Ident, "button"),
                 (Token::Whitespace, " "),
-                (Token::Ident, "@click"),
+                (Token::Ident, "@event"),
                 (Token::Equals, "="),
                 (Token::StringDouble, "\"doIt\""),
                 (Token::Whitespace, " "),
-                (Token::Ident, "*ngIf"),
+                (Token::Ident, "*show"),
                 (Token::Equals, "="),
-                (Token::StringDouble, "\"show\""),
+                (Token::StringDouble, "\"visible\""),
                 (Token::Whitespace, " "),
-                (Token::Ident, "[(ngModel)]"),
+                (Token::Ident, "[(model)]"),
                 (Token::Equals, "="),
                 (Token::StringDouble, "\"val\""),
                 (Token::Whitespace, " "),
@@ -147,7 +147,7 @@ mod tests {
                 (Token::CloseAngle, ">"),
             ]
         );
-        
+
         // Ensure total length matches input length
         let mut total_len = 0;
         for (_, slice) in &tokens {
@@ -163,7 +163,7 @@ mod tests {
 
         assert_eq!(tokens, vec![(Token::Comment, "<!-- unclosed")]);
     }
-    
+
     #[test]
     fn test_raw_text() {
         let input = "hello, world! 你好!";

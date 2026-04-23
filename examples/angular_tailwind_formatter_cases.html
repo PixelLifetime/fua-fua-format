@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Angular + Tailwind Formatter Test Cases</title>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <app-root class="block min-h-screen">
+    <main class="mx-auto max-w-5xl p-6 space-y-8">
+      <section class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-6">
+        <header class="flex items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p class="mt-1 text-sm text-slate-500">
+              Tailwind classes + Angular annotations
+            </p>
+          </div>
+
+          <button
+            class="inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="isSaving"
+            (click)="save()"
+          >
+            Save
+          </button>
+        </header>
+      </section>
+
+      <!-- Angular control flow annotations -->
+      @if (user$ | async; as user) {
+        <section class="grid gap-4 md:grid-cols-2">
+          <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold">Profile</h2>
+
+            <dl class="mt-4 space-y-3 text-sm">
+              <div class="flex items-start justify-between gap-4">
+                <dt class="text-slate-500">Name</dt>
+                <dd class="font-medium">{{ user.name }}</dd>
+              </div>
+
+              <div class="flex items-start justify-between gap-4">
+                <dt class="text-slate-500">Role</dt>
+                <dd class="font-medium">{{ user.role }}</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold">Actions</h2>
+
+            @if (user.permissions.canEdit) {
+              <button
+                class="mt-4 inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                (click)="edit(user)"
+              >
+                Edit profile
+              </button>
+            } @else {
+              <button
+                class="mt-4 inline-flex items-center rounded-xl bg-slate-200 px-4 py-2 text-sm font-medium text-slate-900"
+                disabled
+              >
+                Read only
+              </button>
+            }
+          </article>
+        </section>
+      } @else {
+        <section class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500">
+          Loading user...
+        </section>
+      }
+
+      <!-- Angular @for annotation -->
+      <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-lg font-semibold">Tasks</h2>
+          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            {{ tasks.length }} items
+          </span>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          @for (task of tasks; track task.id) {
+            <article class="rounded-2xl border border-slate-200 p-4 transition hover:shadow-md">
+              <div class="flex items-start justify-between gap-4">
+                <h3 class="font-medium text-slate-900">{{ task.title }}</h3>
+                <span
+                  class="rounded-full px-2.5 py-1 text-xs font-medium"
+                  [class.bg-emerald-100]="task.done"
+                  [class.text-emerald-700]="task.done"
+                  [class.bg-amber-100]="!task.done"
+                  [class.text-amber-700]="!task.done"
+                >
+                  {{ task.done ? 'Done' : 'Open' }}
+                </span>
+              </div>
+
+              <p class="mt-3 text-sm leading-6 text-slate-600">
+                {{ task.description }}
+              </p>
+
+              <div class="mt-4 flex flex-wrap gap-2">
+                @for (label of task.labels; track label) {
+                  <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                    {{ label }}
+                  </span>
+                } @empty {
+                  <span class="text-xs text-slate-400">No labels</span>
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+              No tasks found
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Angular @switch annotation -->
+      <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        @switch (status) {
+          @case ('idle') {
+            <p class="text-sm text-slate-600">Status: idle</p>
+          }
+          @case ('loading') {
+            <p class="text-sm text-sky-600">Status: loading</p>
+          }
+          @case ('success') {
+            <p class="text-sm text-emerald-600">Status: success</p>
+          }
+          @default {
+            <p class="text-sm text-rose-600">Status: unknown</p>
+          }
+        }
+      </section>
+
+      <!-- Tailwind-heavy markup with messy spacing and multiline bindings -->
+      <section
+        class="rounded-2xl bg-slate-900 p-6 text-slate-50 shadow-lg"
+        [class.opacity-60]="isDisabled"
+        [class.pointer-events-none]="isDisabled"
+      >
+        <div class="flex items-center gap-3">
+          <div class="h-3 w-3 rounded-full bg-emerald-400"></div>
+          <h2 class="text-lg font-semibold">Live preview</h2>
+        </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div class="rounded-xl bg-slate-800 p-4">
+            <p class="text-sm text-slate-300">Email</p>
+            <p class="mt-1 font-medium">{{ user.email }}</p>
+          </div>
+
+          <div class="rounded-xl bg-slate-800 p-4">
+            <p class="text-sm text-slate-300">Plan</p>
+            <p class="mt-1 font-medium">{{ user.plan }}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a
+            href="/settings"
+            class="inline-flex items-center rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-white"
+          >
+            Settings
+          </a>
+
+          <a
+            href="/billing"
+            class="inline-flex items-center rounded-xl bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+          >
+            Billing
+          </a>
+        </div>
+      </section>
+
+      <!-- Messy / edge cases -->
+      <div    class="mt-10 rounded-2xl border border-slate-200 bg-white   p-4"
+              [attr.data-id]=" user?.id "
+              (mouseenter)="hover(user)"
+      >
+        <p class="text-sm text-slate-500">
+          This block intentionally has awkward spacing.
+        </p>
+      </div>
+
+      <!-- Keep raw content as raw -->
+      <script>
+        const sample = {
+          title: "Keep JS raw",
+          nested: { value: 123 }
+        };
+
+        function noop() {
+          return sample;
+        }
+      </script>
+
+      <style>
+        .custom-debug-box {
+          outline: 2px solid hotpink;
+        }
+      </style>
+    </main>
+  </app-root>
+</body>
+</html>

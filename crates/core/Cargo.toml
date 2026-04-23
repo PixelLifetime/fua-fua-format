@@ -1,5 +1,5 @@
 [package]
-name = "core"
+name = "fua-core"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,3 +11,4 @@ num-derive = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 extism = "1"
+fua-plugin-api = { path = "../fua-plugin-api" }

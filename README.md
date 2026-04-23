@@ -1,11 +1,12 @@
 # Fua Fua Format
 
-A lightning-fast, highly-permissive, framework-agnostic HTML formatter written in Rust.
+A lightning-fast, highly-permissive HTML formatter written in Rust.
 
-Fua Fua Format is designed to handle modern web development structures losslessly. Built on top of [Logos](https://github.com/maciejhirsz/logos) (for fast lexical analysis) and [Rowan](https://github.com/rust-analyzer/rowan) (for a lossless Red-Green syntax tree), it natively understands framework-specific bindings like Angular's `*ngIf` and `[(ngModel)]` or Vue's `@click` and `:disabled`, keeping your formatting completely structurally intact.
+Fua Fua Format is built around a lossless HTML core plus optional WASM plugins. The core parses and formats plain HTML rules only. Framework-specific behavior lives in separate plugin crates and is reached through a generic host hook API, so the formatter can grow without folding framework branches back into the parser, formatter, or CLI.
 
 ## Features
-- **Framework-Agnostic**: Formats Angular, Vue, and vanilla HTML without choking on structural syntaxes.
+- **Framework-Agnostic Core**: The default formatter applies only generic HTML rules.
+- **Optional WASM Plugins**: Framework-specific formatting lives in separate plugin crates.
 - **Lossless Syntax Tree**: Guarantees zero data loss or layout corruption during formatting. 
 - **Highly Configurable**: Control behavior with extensive config files or CLI arguments.
 - **Microsecond Performance**: Built on top of ultra-fast Rust lexers utilized by `rust-analyzer`.
@@ -16,13 +17,13 @@ You can use the formatter directly through the CLI:
 
 ```bash
 # Format a file and output to stdout
-cargo run --bin cli -- --input my_file.html
+cargo run -p cli -- --input my_file.html
 
 # Format a file explicitly overriding tab behavior and indent size
-cargo run --bin cli -- --input my_file.html --output formatted.html --use-tabs true
+cargo run -p cli -- --input my_file.html --output formatted.html --use-tabs true
 
 # Format via a configuration file
-cargo run --bin cli -- --input examples/sample.html --config examples/config.json --output examples/formatted.html
+cargo run -p cli -- --input examples/sample.html --config examples/config.json --output examples/formatted.html
 ```
 
 ### CLI Arguments
@@ -31,6 +32,7 @@ cargo run --bin cli -- --input examples/sample.html --config examples/config.jso
 * `-c, --config <json file>`: Path to your formatting configuration definitions.
 * `--indent-size <number>`: Override the indent size explicitly.
 * `--use-tabs <bool>`: Override the whitespace strategy explicitly.
+* `--plugin <file>`: Load a compiled WASM plugin. Repeat to load multiple plugins.
 
 ## Configuration (`config.json`)
 
@@ -45,12 +47,15 @@ Fua Fua Format supports the following configuration properties directly fed via 
   "wrap_attributes": true,
   "single_quotes": false,
   "wrap_content": true,
-  "indent_condition_groups": false,
-  "plugin": {
-    "options": {
-      "wrap_conditions_in_parens": false
+  "plugins": [
+    {
+      "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
+      "options": {
+        "wrap_conditions_in_parens": false,
+        "indent_condition_groups": false
+      }
     }
-  }
+  ]
 }
 ```
 
@@ -70,13 +75,39 @@ Fua Fua Format supports the following configuration properties directly fed via 
   Convert all HTML standard `"` double-quotes into `'` single-quotes natively (escapes strictly preserved).
 * `wrap_content` *(Boolean, Default: false)*
   If an opening tag breaks into multiple lines, this ensures the internal raw text (or immediate child string) drops symmetrically to the next appropriate line down.
-* `indent_condition_groups` *(Boolean, Default: false)*
-  When Angular-style control-flow conditions already span multiple lines, indent nested parenthesized groups one extra level so layouts like `(` ... `)` blocks stay visually grouped.
-* `plugin.options.wrap_conditions_in_parens` *(Boolean, Default: false)*
-  For Angular binding values that are already multiline and get condition wrapping, emit an extra parenthesized group around the wrapped expression so object entries can format like `'key':` then `(` ... `)`.
+* `plugins` *(Array, Default: empty)*
+  Ordered list of optional WASM plugins to load after the default HTML formatter pass.
+* `plugin` *(Object, Legacy)*
+  Backward-compatible single-plugin entry. New configs should prefer `plugins`.
+* `plugins[].options` *(Object, Plugin-specific)*
+  Arbitrary JSON options forwarded to the selected plugin on each hook request.
 
 ## Architecture
 
-Fua Fua Format consists of two primary workspace crates:
-- `core`: Houses the Logos tokenizer (`lexer.rs`), the string tree parser (`parser.rs`), the configuration definitions (`config.rs`), and the top-down indent tree walker formatting engine (`formatter.rs`).
-- `cli`: Houses the fast Clap CLI command interface bridging parameters linearly into the `core` parser.
+Fua Fua Format is split into four workspace crates:
+- `fua-core`: Generic HTML lexer, parser, formatter, plugin host, and formatting engine.
+- `fua-plugin-api`: Stable hook contract shared by the core host and every plugin crate.
+- `fua-plugin-angular`: Angular-specific formatting rules compiled to WASM.
+- `cli`: Thin Clap-based command runner for file I/O, config loading, and plugin wiring.
+
+### Module layout
+
+The project is organized so the top-level flow stays simple:
+
+`read input -> load config -> load plugins -> parse -> format -> write output`
+
+The main responsibilities are separated like this:
+
+- `crates/cli/src/main.rs`: Minimal binary entry point that parses arguments and delegates to the app runner.
+- `crates/cli/src/app.rs`: CLI orchestration for I/O, config loading, plugin path resolution, and engine execution.
+- `crates/core/src/engine.rs`: High-level formatter pipeline that turns input text into formatted output.
+- `crates/core/src/parser.rs`, `lexer.rs`, `syntax.rs`: Lossless HTML tokenization and syntax tree construction.
+- `crates/core/src/formatter/`: Core formatting implementation split by responsibility:
+  - traversal through the syntax tree,
+  - tag formatting,
+  - content/token formatting,
+  - plugin hook dispatch,
+  - output/indentation emission,
+  - syntax-context helpers.
+- `crates/core/src/plugins.rs`: WASM plugin host and dispatch order.
+- `crates/fua-plugin-angular/src/`: Angular-specific attribute wrapping, condition handling, shared expression parsing helpers, response builders, and plugin state.

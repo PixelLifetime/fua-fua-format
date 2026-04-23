@@ -26,7 +26,7 @@ pub enum SyntaxKind {
     CLOSE_TAG,
     SELF_CLOSING_TAG,
     ATTRIBUTE,
-    
+
     // Catch-all for rowan
     ERROR,
 }

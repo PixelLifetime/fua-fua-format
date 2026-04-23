@@ -5,9 +5,12 @@ edition = "2024"
 
 # cdylib produces the .wasm binary when compiled with --target wasm32-wasip1
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-extism-pdk = "1"
 serde = { workspace = true }
 serde_json = { workspace = true }
+fua-plugin-api = { path = "../fua-plugin-api" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+extism-pdk = "1"

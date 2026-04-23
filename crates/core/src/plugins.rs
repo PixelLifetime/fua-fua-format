@@ -1,99 +1,124 @@
+use std::borrow::Cow;
+
 use extism::{Manifest, Plugin, Wasm};
-use serde::{Deserialize, Serialize};
+use fua_plugin_api::{HANDLE_HOOK_EXPORT, HookRequest, HookResponse, Replacement};
 
-// ── Data contract shared between host and all guest plugins ──────────────────
-
-/// Serialized and sent to the WASM plugin for every token the host wants
-/// to offer for pre-emption.  The plugin returns [`PluginResult`] if it
-/// claims the token, or an empty string / error to pass through.
-#[derive(Debug, Serialize)]
-pub struct NodeData<'a> {
-    /// SyntaxKind as a human-readable string: `"IDENT"`, `"TEXT"`, `"STRING_DOUBLE"`, …
-    pub kind: &'a str,
-    /// Raw source text of the token (e.g. `"@if"`, `"{"`, `"\"value\""`).
-    pub text: &'a str,
-    /// SyntaxKind of the **parent** node: `"ELEMENT"`, `"ROOT"`, `"OPEN_TAG"`, …
-    pub parent_kind: &'a str,
-    /// For tokens inside a tag, the name of the attribute this token belongs to
-    /// (e.g. `"[ngClass]"`).  Empty string when not inside an attribute.
-    pub attribute_name: &'a str,
-    /// Current indentation depth at the point this token is about to be emitted.
-    pub current_indent: usize,
-    /// Spaces per indent level (only meaningful when `use_tabs` is false).
-    pub indent_size: usize,
-    /// Whether the formatter is configured to use tab characters.
-    pub use_tabs: bool,
-    /// JSON string of plugin-specific options from `config.plugin.options`.
-    /// `None` when no plugin section is present in the config.
-    pub plugin_options: Option<&'a str>,
+pub trait FormatPlugin: Send {
+    fn handle_hook(&mut self, request: &HookRequest<'_>) -> HookResponse;
 }
 
-/// What the WASM plugin tells the formatter to do for a given token.
-///
-/// If the plugin returns an empty string the formatter falls back to its
-/// built-in logic.  Otherwise it deserialises this struct and hands control
-/// to [`Formatter::emit_plugin_result`].
-#[derive(Debug, Deserialize)]
-pub struct PluginResult {
-    /// The literal text to push into the formatter output for this token.
-    pub output: String,
-    /// Signed indent adjustment applied **around** `output`:
-    ///   - negative → decrement `current_indent` *before* emitting (e.g. closing `}`)
-    ///   - positive → increment `current_indent` *after* emitting (e.g. opening `{`)
-    pub indent_delta: i32,
-    /// When `true` the formatter calls `push_newlines_with_indent(1)` before
-    /// pushing `output`, ensuring a clean newline + correct indentation prefix.
-    pub prepend_newline: bool,
-    /// When `true` the formatter ensures at least one space immediately before
-    /// `output` (idempotent — will not double-up an existing trailing space).
-    pub prepend_space: bool,
+struct WasmPluginInstance {
+    plugin: Plugin,
+    plugin_options: Option<String>,
 }
 
-// ── Plugin host ───────────────────────────────────────────────────────────────
-
-pub struct PluginManager {
-    plugin: Option<Plugin>,
-}
-
-impl PluginManager {
-    pub fn new() -> Self {
-        Self { plugin: None }
-    }
-
-    /// Returns `true` if a WASM plugin is currently loaded.
-    pub fn has_plugin(&self) -> bool {
-        self.plugin.is_some()
-    }
-
-    /// Load a compiled `.wasm` plugin from `path`.
-    /// The plugin must export a function named `format_hook`.
-    pub fn load_wasm(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+impl WasmPluginInstance {
+    fn new(path: &str, plugin_options: Option<String>) -> Result<Self, Box<dyn std::error::Error>> {
         let manifest = Manifest::new([Wasm::file(path)]);
         let plugin = Plugin::new(&manifest, [], true)?;
-        self.plugin = Some(plugin);
+        Ok(Self {
+            plugin,
+            plugin_options,
+        })
+    }
+}
+
+impl FormatPlugin for WasmPluginInstance {
+    fn handle_hook(&mut self, request: &HookRequest<'_>) -> HookResponse {
+        let request = request
+            .clone()
+            .with_plugin_options(self.plugin_options.as_deref().map(Cow::Borrowed));
+
+        let input = match serde_json::to_string(&request) {
+            Ok(input) => input,
+            Err(_) => return HookResponse::Continue,
+        };
+
+        let response: String = match self.plugin.call(HANDLE_HOOK_EXPORT, input) {
+            Ok(response) => response,
+            Err(_) => return HookResponse::Continue,
+        };
+
+        if response.trim().is_empty() {
+            return HookResponse::Continue;
+        }
+
+        serde_json::from_str(&response).unwrap_or(HookResponse::Continue)
+    }
+}
+
+#[derive(Default)]
+pub struct PluginHost {
+    plugins: Vec<Box<dyn FormatPlugin>>,
+}
+
+impl PluginHost {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.plugins.is_empty()
+    }
+
+    pub fn register(&mut self, plugin: Box<dyn FormatPlugin>) {
+        self.plugins.push(plugin);
+    }
+
+    pub fn load_wasm(
+        &mut self,
+        path: &str,
+        plugin_options: Option<String>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let plugin = WasmPluginInstance::new(path, plugin_options)?;
+        self.register(Box::new(plugin));
         Ok(())
     }
 
-    /// Offer `node_data` to the loaded plugin.
-    ///
-    /// Returns `Some(PluginResult)` when the plugin claims the token and
-    /// provides formatting instructions.  Returns `None` (pass-through) when:
-    ///   - no plugin is loaded
-    ///   - the plugin function returns an empty string
-    ///   - any serialisation / call error occurs
-    pub fn call_format_hook(&mut self, node_data: &NodeData<'_>) -> Option<PluginResult> {
-        let plugin = self.plugin.as_mut()?;
-        let input = serde_json::to_string(node_data).ok()?;
-        let response: String = plugin.call("format_hook", input).ok()?;
-        if response.is_empty() {
-            return None;
+    pub fn dispatch(&mut self, request: &HookRequest<'_>) -> Option<Replacement> {
+        for plugin in &mut self.plugins {
+            match plugin.handle_hook(request) {
+                HookResponse::Continue => {}
+                HookResponse::Replace(replacement) => return Some(replacement),
+            }
         }
-        serde_json::from_str(&response).ok()
+
+        None
     }
 }
 
-impl Default for PluginManager {
-    fn default() -> Self {
-        Self::new()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fua_plugin_api::{HookContext, LeadingSpacing};
+
+    struct PassThroughPlugin;
+
+    impl FormatPlugin for PassThroughPlugin {
+        fn handle_hook(&mut self, _request: &HookRequest<'_>) -> HookResponse {
+            HookResponse::Continue
+        }
+    }
+
+    struct ReplacingPlugin;
+
+    impl FormatPlugin for ReplacingPlugin {
+        fn handle_hook(&mut self, _request: &HookRequest<'_>) -> HookResponse {
+            HookResponse::replace(Replacement::text("handled").with_leading(LeadingSpacing::Space))
+        }
+    }
+
+    #[test]
+    fn dispatch_returns_the_first_replacement() {
+        let context = HookContext::new("ROOT", None, None, 0, 2, false);
+        let request = HookRequest::token("TEXT", "hello", context);
+
+        let mut host = PluginHost::new();
+        host.register(Box::new(PassThroughPlugin));
+        host.register(Box::new(ReplacingPlugin));
+
+        let replacement = host.dispatch(&request).expect("replacement");
+        assert_eq!(replacement.output, "handled");
+        assert_eq!(replacement.leading_spacing, LeadingSpacing::Space);
     }
 }

@@ -58,14 +58,20 @@ impl<'a> Parser<'a> {
         self.builder.finish()
     }
 
+    fn peek_token(&mut self) -> Option<Token> {
+        self.lexer
+            .peek()
+            .map(|(res, _)| res.as_ref().unwrap_or(&Token::Text).clone())
+    }
+
     fn parse_node(&mut self) {
-        if let Some(&(ref res, _)) = self.lexer.peek() {
-            let token = res.as_ref().unwrap_or(&Token::Text);
-            match token {
-                Token::OpenAngle => self.parse_element(),
-                Token::OpenAngleSlash => { self.parse_tag(SyntaxKind::CLOSE_TAG); },
-                _ => self.bump(),
+        match self.peek_token() {
+            Some(Token::OpenAngle) => self.parse_element(),
+            Some(Token::OpenAngleSlash) => {
+                self.parse_tag(SyntaxKind::CLOSE_TAG);
             }
+            Some(_) => self.bump(),
+            None => {}
         }
     }
 
@@ -81,7 +87,19 @@ impl<'a> Parser<'a> {
             let lower = tag_name.to_lowercase();
             is_void = matches!(
                 lower.as_str(),
-                "area" | "base" | "br" | "col" | "embed" | "hr" | "img" | "input" | "link" | "meta" | "source" | "track" | "wbr"
+                "area"
+                    | "base"
+                    | "br"
+                    | "col"
+                    | "embed"
+                    | "hr"
+                    | "img"
+                    | "input"
+                    | "link"
+                    | "meta"
+                    | "source"
+                    | "track"
+                    | "wbr"
             );
         }
 
@@ -90,24 +108,16 @@ impl<'a> Parser<'a> {
 
         if !is_self_closing && !is_void {
             // Parse children recursively
-            loop {
-                if let Some(&(ref res, _)) = self.lexer.peek() {
-                    let token = res.as_ref().unwrap_or(&Token::Text);
-                    if *token == Token::OpenAngleSlash {
-                        break;
-                    }
-                    self.parse_node();
-                } else {
-                    break; // Graceful EOF fallback
+            while let Some(token) = self.peek_token() {
+                if token == Token::OpenAngleSlash {
+                    break;
                 }
+                self.parse_node();
             }
 
             // Parse close tag if it exists
-            if let Some(&(ref res, _)) = self.lexer.peek() {
-                let token = res.as_ref().unwrap_or(&Token::Text);
-                if *token == Token::OpenAngleSlash {
-                    self.parse_tag(SyntaxKind::CLOSE_TAG);
-                }
+            if matches!(self.peek_token(), Some(Token::OpenAngleSlash)) {
+                self.parse_tag(SyntaxKind::CLOSE_TAG);
             }
         }
 
@@ -117,21 +127,20 @@ impl<'a> Parser<'a> {
     fn parse_tag(&mut self, kind: SyntaxKind) -> bool {
         self.builder.start_node(kind.into());
         let mut is_self_closing = false;
-        
+
         // bump `<` or `</`
         self.bump();
 
         // bump everything until `>` or `/>`
-        while let Some(&(ref res, _)) = self.lexer.peek() {
-            let token = res.as_ref().unwrap_or(&Token::Text);
-            let is_close = *token == Token::CloseAngle || *token == Token::SlashCloseAngle;
-            
-            if *token == Token::SlashCloseAngle {
+        while let Some(token) = self.peek_token() {
+            let is_close = token == Token::CloseAngle || token == Token::SlashCloseAngle;
+
+            if token == Token::SlashCloseAngle {
                 is_self_closing = true;
             }
-            
+
             self.bump();
-            
+
             if is_close {
                 break;
             }
@@ -151,9 +160,9 @@ mod tests {
     fn test_lossless_parser() {
         let input = r#"
             <!-- Component wrapper -->
-            <div id="app" *ngIf="show" @click="handle">
+            <div id="app" *show="visible" @event="handle">
                 hello world! 
-                <button [(ngModel)]="value" :disabled="false" />
+                <button [(model)]="value" :disabled="false" />
                 <Closing / > </ Closing >
             </div>
         "#;
@@ -163,7 +172,7 @@ mod tests {
         let syntax_node = SyntaxNode::new_root(green_node);
 
         let reconstructed = syntax_node.to_string();
-        
+
         assert_eq!(
             input, reconstructed,
             "The rebuilt source text must be byte-for-byte identical to the original input."

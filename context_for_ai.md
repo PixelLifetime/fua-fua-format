@@ -1,5 +1,5 @@
 # PROJECT CONTEXT REPORT
-Generated: 2026-04-17 23:07:10
+Generated: 2026-04-18 18:32:25
 
 ## 1. PROJECT STRUCTURE
 ```text
@@ -10,11 +10,22 @@ fua-fua-format/
 |   |   |   |-- package.json
 |   |   |   `-- run.js
 |   |   |-- src/
+|   |   |   |-- app.rs
+|   |   |   |-- args.rs
 |   |   |   `-- main.rs
 |   |   `-- Cargo.toml
 |   |-- core/
 |   |   |-- src/
+|   |   |   |-- formatter/
+|   |   |   |   |-- content.rs
+|   |   |   |   |-- context.rs
+|   |   |   |   |-- hooks.rs
+|   |   |   |   |-- output.rs
+|   |   |   |   |-- tags.rs
+|   |   |   |   `-- traversal.rs
+|   |   |   |-- architecture_tests.rs
 |   |   |   |-- config.rs
+|   |   |   |-- engine.rs
 |   |   |   |-- formatter.rs
 |   |   |   |-- lexer.rs
 |   |   |   |-- lib.rs
@@ -22,7 +33,17 @@ fua-fua-format/
 |   |   |   |-- plugins.rs
 |   |   |   `-- syntax.rs
 |   |   `-- Cargo.toml
-|   `-- fua-plugin-angular/
+|   |-- fua-plugin-angular/
+|   |   |-- src/
+|   |   |   |-- attributes.rs
+|   |   |   |-- context.rs
+|   |   |   |-- expressions.rs
+|   |   |   |-- hooks.rs
+|   |   |   |-- lib.rs
+|   |   |   |-- response.rs
+|   |   |   `-- state.rs
+|   |   `-- Cargo.toml
+|   `-- fua-plugin-api/
 |       |-- src/
 |       |   `-- lib.rs
 |       `-- Cargo.toml
@@ -36,7 +57,6 @@ fua-fua-format/
 |   |-- react_example.jsx
 |   |-- react_formatted.jsx
 |   |-- sample.html
-|   |-- test_plain.html
 |   |-- test_plain_formatted.html
 |   |-- vue_example.html
 |   `-- vue_formatted.html
@@ -49,13 +69,13 @@ fua-fua-format/
 
 ---
 ## 2. PROJECT STATISTICS
-**Total Files Scanned:** 32
+**Total Files Scanned:** 49
 
 | Extension | Count |
 |---|---|
-| .html | 10 |
-| .rs | 9 |
-| .toml | 4 |
+| .rs | 26 |
+| .html | 9 |
+| .toml | 5 |
 | (no extension) | 2 |
 | .json | 2 |
 | .jsx | 2 |
@@ -91,6 +111,7 @@ Thumbs.db
 members = [
     "crates/cli",
     "crates/core",
+    "crates/fua-plugin-api",
     # extism-pdk uses WASM-only host imports and cannot link for native targets.
     # This crate is in the workspace so it can use workspace deps, but is
     # excluded from the default build.  Compile it explicitly with:
@@ -140,12 +161,13 @@ SOFTWARE.
 ```markdown
 # Fua Fua Format
 
-A lightning-fast, highly-permissive, framework-agnostic HTML formatter written in Rust.
+A lightning-fast, highly-permissive HTML formatter written in Rust.
 
-Fua Fua Format is designed to handle modern web development structures losslessly. Built on top of [Logos](https://github.com/maciejhirsz/logos) (for fast lexical analysis) and [Rowan](https://github.com/rust-analyzer/rowan) (for a lossless Red-Green syntax tree), it natively understands framework-specific bindings like Angular's `*ngIf` and `[(ngModel)]` or Vue's `@click` and `:disabled`, keeping your formatting completely structurally intact.
+Fua Fua Format is built around a lossless HTML core plus optional WASM plugins. The core parses and formats plain HTML rules only. Framework-specific behavior lives in separate plugin crates and is reached through a generic host hook API, so the formatter can grow without folding framework branches back into the parser, formatter, or CLI.
 
 ## Features
-- **Framework-Agnostic**: Formats Angular, Vue, and vanilla HTML without choking on structural syntaxes.
+- **Framework-Agnostic Core**: The default formatter applies only generic HTML rules.
+- **Optional WASM Plugins**: Framework-specific formatting lives in separate plugin crates.
 - **Lossless Syntax Tree**: Guarantees zero data loss or layout corruption during formatting. 
 - **Highly Configurable**: Control behavior with extensive config files or CLI arguments.
 - **Microsecond Performance**: Built on top of ultra-fast Rust lexers utilized by `rust-analyzer`.
@@ -156,13 +178,13 @@ You can use the formatter directly through the CLI:
 
 ```bash
 # Format a file and output to stdout
-cargo run --bin cli -- --input my_file.html
+cargo run -p cli -- --input my_file.html
 
 # Format a file explicitly overriding tab behavior and indent size
-cargo run --bin cli -- --input my_file.html --output formatted.html --use-tabs true
+cargo run -p cli -- --input my_file.html --output formatted.html --use-tabs true
 
 # Format via a configuration file
-cargo run --bin cli -- --input examples/sample.html --config examples/config.json --output examples/formatted.html
+cargo run -p cli -- --input examples/sample.html --config examples/config.json --output examples/formatted.html
 ```
 
 ### CLI Arguments
@@ -171,6 +193,7 @@ cargo run --bin cli -- --input examples/sample.html --config examples/config.jso
 * `-c, --config <json file>`: Path to your formatting configuration definitions.
 * `--indent-size <number>`: Override the indent size explicitly.
 * `--use-tabs <bool>`: Override the whitespace strategy explicitly.
+* `--plugin <file>`: Load a compiled WASM plugin. Repeat to load multiple plugins.
 
 ## Configuration (`config.json`)
 
@@ -185,12 +208,15 @@ Fua Fua Format supports the following configuration properties directly fed via 
   "wrap_attributes": true,
   "single_quotes": false,
   "wrap_content": true,
-  "indent_condition_groups": false,
-  "plugin": {
-    "options": {
-      "wrap_conditions_in_parens": false
+  "plugins": [
+    {
+      "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
+      "options": {
+        "wrap_conditions_in_parens": false,
+        "indent_condition_groups": false
+      }
     }
-  }
+  ]
 }
 ```
 
@@ -210,16 +236,42 @@ Fua Fua Format supports the following configuration properties directly fed via 
   Convert all HTML standard `"` double-quotes into `'` single-quotes natively (escapes strictly preserved).
 * `wrap_content` *(Boolean, Default: false)*
   If an opening tag breaks into multiple lines, this ensures the internal raw text (or immediate child string) drops symmetrically to the next appropriate line down.
-* `indent_condition_groups` *(Boolean, Default: false)*
-  When Angular-style control-flow conditions already span multiple lines, indent nested parenthesized groups one extra level so layouts like `(` ... `)` blocks stay visually grouped.
-* `plugin.options.wrap_conditions_in_parens` *(Boolean, Default: false)*
-  For Angular binding values that are already multiline and get condition wrapping, emit an extra parenthesized group around the wrapped expression so object entries can format like `'key':` then `(` ... `)`.
+* `plugins` *(Array, Default: empty)*
+  Ordered list of optional WASM plugins to load after the default HTML formatter pass.
+* `plugin` *(Object, Legacy)*
+  Backward-compatible single-plugin entry. New configs should prefer `plugins`.
+* `plugins[].options` *(Object, Plugin-specific)*
+  Arbitrary JSON options forwarded to the selected plugin on each hook request.
 
 ## Architecture
 
-Fua Fua Format consists of two primary workspace crates:
-- `core`: Houses the Logos tokenizer (`lexer.rs`), the string tree parser (`parser.rs`), the configuration definitions (`config.rs`), and the top-down indent tree walker formatting engine (`formatter.rs`).
-- `cli`: Houses the fast Clap CLI command interface bridging parameters linearly into the `core` parser.
+Fua Fua Format is split into four workspace crates:
+- `fua-core`: Generic HTML lexer, parser, formatter, plugin host, and formatting engine.
+- `fua-plugin-api`: Stable hook contract shared by the core host and every plugin crate.
+- `fua-plugin-angular`: Angular-specific formatting rules compiled to WASM.
+- `cli`: Thin Clap-based command runner for file I/O, config loading, and plugin wiring.
+
+### Module layout
+
+The project is organized so the top-level flow stays simple:
+
+`read input -> load config -> load plugins -> parse -> format -> write output`
+
+The main responsibilities are separated like this:
+
+- `crates/cli/src/main.rs`: Minimal binary entry point that parses arguments and delegates to the app runner.
+- `crates/cli/src/app.rs`: CLI orchestration for I/O, config loading, plugin path resolution, and engine execution.
+- `crates/core/src/engine.rs`: High-level formatter pipeline that turns input text into formatted output.
+- `crates/core/src/parser.rs`, `lexer.rs`, `syntax.rs`: Lossless HTML tokenization and syntax tree construction.
+- `crates/core/src/formatter/`: Core formatting implementation split by responsibility:
+  - traversal through the syntax tree,
+  - tag formatting,
+  - content/token formatting,
+  - plugin hook dispatch,
+  - output/indentation emission,
+  - syntax-context helpers.
+- `crates/core/src/plugins.rs`: WASM plugin host and dispatch order.
+- `crates/fua-plugin-angular/src/`: Angular-specific attribute wrapping, condition handling, shared expression parsing helpers, response builders, and plugin state.
 
 ```
 
@@ -535,7 +587,7 @@ name = "fua-fua"
 path = "src/main.rs"
 
 [dependencies]
-fua-core = { package = "core", path = "../core" }
+fua-core = { path = "../core" }
 clap = { version = "4.5", features = ["derive"] }
 serde_json = "1.0"
 
@@ -575,493 +627,282 @@ process.exit(result.status || 0);
 
 ```
 
-# FILE: crates/cli/src/main.rs
+# FILE: crates/cli/src/app.rs
 ```rust
-use clap::Parser as ClapParser;
-use fua_core::config::FormatterConfig;
-use fua_core::formatter::Formatter;
-use fua_core::parser::Parser;
-use fua_core::syntax::SyntaxNode;
+use crate::args::Args;
+use fua_core::config::{FormatterConfig, PluginConfig};
+use fua_core::engine::FormatEngine;
 use std::fs;
 use std::io::{self, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-#[derive(ClapParser, Debug)]
+type CliResult<T> = Result<T, String>;
+
+pub(crate) fn run(args: Args) -> CliResult<()> {
+    let input = read_input(args.input.as_deref())?;
+    ensure_input_not_empty(&input)?;
+
+    let mut config = load_formatter_config(args.config.as_deref())?;
+    apply_cli_overrides(&mut config, &args);
+
+    let plugin_configs = resolve_plugin_configs(&config, args.config.as_deref(), &args.plugin);
+    let output = run_engine(&input, config, &plugin_configs)?;
+    write_output(args.output.as_deref(), &output)?;
+
+    Ok(())
+}
+
+fn read_input(path: Option<&Path>) -> CliResult<String> {
+    if let Some(path) = path {
+        fs::read_to_string(path)
+            .map_err(|error| format!("failed to read input file '{}': {error}", path.display()))
+    } else {
+        let mut input = String::new();
+        io::stdin()
+            .read_to_string(&mut input)
+            .map_err(|error| format!("failed to read stdin: {error}"))?;
+        Ok(input)
+    }
+}
+
+fn ensure_input_not_empty(input: &str) -> CliResult<()> {
+    if input.trim().is_empty() {
+        Err("No HTML provided.".to_string())
+    } else {
+        Ok(())
+    }
+}
+
+fn load_formatter_config(path: Option<&Path>) -> CliResult<FormatterConfig> {
+    let Some(path) = path else {
+        return Ok(FormatterConfig::default());
+    };
+
+    let config_str = fs::read_to_string(path)
+        .map_err(|error| format!("failed to read config file '{}': {error}", path.display()))?;
+    serde_json::from_str(&config_str)
+        .map_err(|error| format!("failed to parse config file '{}': {error}", path.display()))
+}
+
+fn apply_cli_overrides(config: &mut FormatterConfig, args: &Args) {
+    if let Some(indent_size) = args.indent_size {
+        config.indent_size = indent_size;
+    }
+
+    if let Some(use_tabs) = args.use_tabs {
+        config.use_tabs = use_tabs;
+    }
+}
+
+fn resolve_plugin_configs(
+    config: &FormatterConfig,
+    config_path: Option<&Path>,
+    cli_plugins: &[PathBuf],
+) -> Vec<PluginConfig> {
+    let mut plugins = resolve_configured_plugins(config, config_path);
+    plugins.extend(cli_plugin_paths_to_configs(cli_plugins));
+    plugins
+}
+
+fn resolve_configured_plugins(
+    config: &FormatterConfig,
+    config_path: Option<&Path>,
+) -> Vec<PluginConfig> {
+    config
+        .plugin_configs()
+        .into_iter()
+        .map(|mut plugin| {
+            if let Some(path) = plugin.path.as_deref() {
+                plugin.path = Some(
+                    resolve_plugin_path(Path::new(path), config_path)
+                        .to_string_lossy()
+                        .into_owned(),
+                );
+            }
+            plugin
+        })
+        .collect()
+}
+
+fn cli_plugin_paths_to_configs(plugin_paths: &[PathBuf]) -> Vec<PluginConfig> {
+    plugin_paths
+        .iter()
+        .map(|path| PluginConfig {
+            path: Some(path.to_string_lossy().into_owned()),
+            options: None,
+        })
+        .collect()
+}
+
+fn resolve_plugin_path(plugin_path: &Path, config_path: Option<&Path>) -> PathBuf {
+    let path = plugin_path;
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+
+    let Some(config_path) = config_path else {
+        return path.to_path_buf();
+    };
+
+    let config_dir = config_path.parent().unwrap_or(Path::new("."));
+    config_dir.join(path)
+}
+
+fn run_engine(input: &str, config: FormatterConfig, plugins: &[PluginConfig]) -> CliResult<String> {
+    let mut engine = FormatEngine::new(config);
+    load_plugin_configs(&mut engine, plugins)?;
+    Ok(engine.format(input))
+}
+
+fn load_plugin_configs(engine: &mut FormatEngine, plugins: &[PluginConfig]) -> CliResult<()> {
+    for plugin in plugins {
+        if let Err(error) = engine.load_plugin_config(plugin) {
+            let path = plugin.path.as_deref().unwrap_or("<missing>");
+            return Err(format!("failed to load plugin '{path}': {error}"));
+        }
+    }
+
+    Ok(())
+}
+
+fn write_output(path: Option<&Path>, output: &str) -> CliResult<()> {
+    if let Some(path) = path {
+        fs::write(path, output).map_err(|error| {
+            format!("failed to write output file '{}': {error}", path.display())
+        })?;
+        println!("Successfully formatted into: {}", path.display());
+    } else {
+        print!("{output}");
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_args() -> Args {
+        Args {
+            input: None,
+            output: None,
+            config: None,
+            indent_size: None,
+            use_tabs: None,
+            plugin: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn cli_overrides_replace_config_values() {
+        let mut config = FormatterConfig::default();
+        let mut args = sample_args();
+        args.indent_size = Some(4);
+        args.use_tabs = Some(true);
+
+        apply_cli_overrides(&mut config, &args);
+
+        assert_eq!(config.indent_size, 4);
+        assert!(config.use_tabs);
+    }
+
+    #[test]
+    fn relative_plugin_paths_are_resolved_from_config_directory() {
+        let resolved = resolve_plugin_path(
+            Path::new("plugins/angular.wasm"),
+            Some(Path::new(r"C:\project\config.json")),
+        );
+
+        assert_eq!(resolved, PathBuf::from(r"C:\project\plugins\angular.wasm"));
+    }
+
+    #[test]
+    fn requested_plugins_merge_configured_and_cli_sources() {
+        let config = FormatterConfig {
+            plugins: vec![PluginConfig {
+                path: Some("plugins/configured.wasm".to_string()),
+                options: None,
+            }],
+            plugin: PluginConfig {
+                path: Some("plugins/legacy.wasm".to_string()),
+                options: None,
+            },
+            ..FormatterConfig::default()
+        };
+
+        let plugins = resolve_plugin_configs(
+            &config,
+            Some(Path::new(r"C:\project\config.json")),
+            &[PathBuf::from(r"C:\plugins\cli.wasm")],
+        );
+
+        assert_eq!(plugins.len(), 3);
+        assert_eq!(
+            plugins[0].path.as_deref().map(PathBuf::from),
+            Some(PathBuf::from(r"C:\project\plugins\configured.wasm"))
+        );
+        assert_eq!(
+            plugins[1].path.as_deref().map(PathBuf::from),
+            Some(PathBuf::from(r"C:\project\plugins\legacy.wasm"))
+        );
+        assert_eq!(
+            plugins[2].path.as_deref().map(PathBuf::from),
+            Some(PathBuf::from(r"C:\plugins\cli.wasm"))
+        );
+    }
+}
+
+```
+
+# FILE: crates/cli/src/args.rs
+```rust
+use clap::Parser as ClapParser;
+use std::path::PathBuf;
+
+#[derive(ClapParser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
-struct Args {
+pub(crate) struct Args {
     /// Input file path (or stdin if not provided)
     #[arg(short, long)]
-    input: Option<String>,
+    pub(crate) input: Option<PathBuf>,
 
     /// Output file path (or stdout if not provided)
     #[arg(short, long)]
-    output: Option<String>,
+    pub(crate) output: Option<PathBuf>,
 
     /// Path to a JSON configuration file
     #[arg(short, long)]
-    config: Option<String>,
+    pub(crate) config: Option<PathBuf>,
 
     /// Override indent size
     #[arg(long)]
-    indent_size: Option<usize>,
+    pub(crate) indent_size: Option<usize>,
 
     /// Use tabs instead of spaces
     #[arg(long)]
-    use_tabs: Option<bool>,
+    pub(crate) use_tabs: Option<bool>,
 
-    /// Path to a compiled .wasm formatter plugin (e.g. fua_plugin_angular.wasm)
+    /// Path to a compiled .wasm formatter plugin. Repeat to load multiple plugins.
     #[arg(long)]
-    plugin: Option<String>,
+    pub(crate) plugin: Vec<PathBuf>,
 }
 
-/// For JS/JSX/TS/TSX files split the text at the first `<` tag boundary so
-/// that the formatter only sees the HTML/JSX portion.  The leading script code
-/// is returned as-is and re-prepended after formatting.
-fn split_script_preamble(input: &str) -> (&str, &str) {
-    let bytes = input.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'<' {
-            let next = bytes.get(i + 1).copied().unwrap_or(b' ');
-            if next.is_ascii_alphabetic() || next == b'/' || next == b'!' {
-                return (&input[..i], &input[i..]);
-            }
-        }
-        i += 1;
-    }
-    (input, "")
-}
+```
 
-/// Extract the **inner content** of `<script>` and `<style>` blocks as opaque
-/// placeholders so the formatter never tries to reformat JS or CSS.
-///
-/// The opening/closing tags are kept in the output so the formatter can still
-/// handle their attributes (e.g. `setup`, `scoped`, `lang="ts"`).
-///
-/// Returns the modified source plus a list of the extracted inner strings
-/// (indexed by their placeholder number, e.g. `__RAW0__`).
-fn extract_raw_blocks(input: &str) -> (String, Vec<String>) {
-    const RAW_TAGS: &[&str] = &["script", "style"];
+# FILE: crates/cli/src/main.rs
+```rust
+mod app;
+mod args;
 
-    let mut out = String::with_capacity(input.len());
-    let mut blocks: Vec<String> = Vec::new();
-    let chars: Vec<char> = input.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
-
-    while i < len {
-        // Look for an opening `<` followed by a raw-block tag name.
-        if chars[i] == '<' {
-            // Peek ahead (skip optional `/`) to get the tag name
-            let start = i + 1;
-            let tag_match = RAW_TAGS.iter().find(|&&tag| {
-                let end = start + tag.len();
-                if end > len { return false; }
-                let candidate: String = chars[start..end].iter().collect();
-                let candidate_lc = candidate.to_lowercase();
-                if candidate_lc != tag { return false; }
-                // Must be followed by whitespace, `>`, or end-of-input
-                let after = chars.get(end).copied().unwrap_or('>');
-                after == '>' || after == ' ' || after == '\t' || after == '\n' || after == '\r' || after == '/'
-            });
-
-            if let Some(&tag) = tag_match {
-                // Consume the full opening tag (up to and including `>`).
-                let open_start = i;
-                while i < len && chars[i] != '>' { i += 1; }
-                i += 1; // consume `>`
-                let open_tag: String = chars[open_start..i].iter().collect();
-                out.push_str(&open_tag);
-
-                // Find the matching closing tag `</tagname>` (case-insensitive).
-                let close_needle = format!("</{}", tag);
-                let mut inner = String::new();
-                loop {
-                    if i >= len { break; }
-                    // Check for closing tag start
-                    let remaining: String = chars[i..].iter().collect();
-                    let remaining_lc = remaining.to_lowercase();
-                    if remaining_lc.starts_with(&close_needle) {
-                        break;
-                    }
-                    inner.push(chars[i]);
-                    i += 1;
-                }
-
-                let placeholder = format!("__RAW{}__", blocks.len());
-                blocks.push(inner);
-                out.push_str(&placeholder);
-                // Don't advance i — the closing tag will be consumed normally.
-                continue;
-            }
-        }
-
-        out.push(chars[i]);
-        i += 1;
-    }
-
-    (out, blocks)
-}
-
-/// Restore `__RAW0__` placeholders back to their original inner content.
-fn restore_raw_blocks(formatted: &str, blocks: &[String]) -> String {
-    let mut result = formatted.to_string();
-    for (idx, inner) in blocks.iter().enumerate() {
-        let placeholder = format!("__RAW{}__", idx);
-        result = result.replace(&placeholder, inner);
-    }
-    result
-}
-
-/// Replace every `{...}` JSX expression that lives **outside** of a HTML tag's
-/// attribute list with a unique placeholder token like `__FUA0__`.
-/// Returns the modified source and the ordered list of extracted expressions.
-///
-/// Rules:
-///  - Inside `<tag ...>` attribute regions we leave `{...}` untouched
-///    (they are already passed through verbatim as attribute values).
-///  - Outside tags (i.e. in element content) we extract balanced `{...}`
-///    blocks, respecting nesting, single/double quotes, and template literals.
-fn extract_jsx_expressions(input: &str) -> (String, Vec<String>) {
-    let mut out = String::with_capacity(input.len());
-    let mut exprs: Vec<String> = Vec::new();
-    let chars: Vec<char> = input.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
-    // Track whether we are inside a `<tag …>` opening (i.e. attribute region).
-    let mut in_tag = false;
-
-    while i < len {
-        let c = chars[i];
-
-        if c == '<' {
-            // Entering a tag – but `</` is a close tag (no attributes).
-            if chars.get(i + 1).copied() != Some('/') {
-                in_tag = true;
-            }
-            out.push(c);
-            i += 1;
-            continue;
-        }
-
-        if c == '>' && in_tag {
-            in_tag = false;
-            out.push(c);
-            i += 1;
-            continue;
-        }
-
-        // Inside a tag: copy verbatim (attribute `{…}` expressions are fine).
-        if in_tag {
-            out.push(c);
-            i += 1;
-            continue;
-        }
-
-        // Outside a tag: extract balanced `{…}` blocks.
-        if c == '{' {
-            let start = i;
-            let mut depth = 0usize;
-            let mut expr = String::new();
-
-            while i < len {
-                let ec = chars[i];
-                // Handle string literals inside the expression opaquely.
-                if ec == '"' || ec == '\'' || ec == '`' {
-                    let q = ec;
-                    expr.push(ec);
-                    i += 1;
-                    while i < len {
-                        let sc = chars[i];
-                        expr.push(sc);
-                        i += 1;
-                        if sc == '\\' {
-                            // Escape – consume next char raw.
-                            if i < len { expr.push(chars[i]); i += 1; }
-                            continue;
-                        }
-                        if sc == q { break; }
-                    }
-                    continue;
-                }
-                if ec == '{' { depth += 1; }
-                if ec == '}' {
-                    depth -= 1;
-                    expr.push(ec);
-                    i += 1;
-                    if depth == 0 { break; }
-                    continue;
-                }
-                expr.push(ec);
-                i += 1;
-            }
-
-            let placeholder = format!("__FUA{}__", exprs.len());
-            exprs.push(expr);
-            out.push_str(&placeholder);
-            continue;
-        }
-
-        out.push(c);
-        i += 1;
-    }
-
-    (out, exprs)
-}
-
-/// Extract `{...}` blocks in **element content** position (outside tags) that
-/// contain NO HTML child elements (i.e. no `<letter` pattern inside).
-///
-/// This handles:
-///  - Handlebars / Vue mustaches: `{{ value }}`
-///  - Any other framework that uses `{expr}` syntax in template content
-///
-/// Angular's `@if (...) { ... }` blocks are **NOT** extracted because their
-/// inner content always contains HTML child tags (`<element>`).
-fn extract_template_expressions(input: &str) -> (String, Vec<String>) {
-    let mut out = String::with_capacity(input.len());
-    let mut exprs: Vec<String> = Vec::new();
-    let chars: Vec<char> = input.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
-    let mut in_tag = false;
-
-    while i < len {
-        let c = chars[i];
-
-        if c == '<' {
-            if chars.get(i + 1).copied() != Some('/') {
-                in_tag = true;
-            }
-            out.push(c);
-            i += 1;
-            continue;
-        }
-        if c == '>' && in_tag {
-            in_tag = false;
-            out.push(c);
-            i += 1;
-            continue;
-        }
-        if in_tag {
-            out.push(c);
-            i += 1;
-            continue;
-        }
-
-        // Outside a tag — check for a `{` that opens an expression block.
-        if c == '{' {
-            // Collect the balanced `{...}` block.
-            let mut depth = 0usize;
-            let mut expr = String::new();
-            let mut j = i;
-
-            while j < len {
-                let ec = chars[j];
-                // Skip string literals so their braces don't confuse depth.
-                if ec == '"' || ec == '\'' || ec == '`' {
-                    let q = ec;
-                    expr.push(ec);
-                    j += 1;
-                    while j < len {
-                        let sc = chars[j];
-                        expr.push(sc);
-                        j += 1;
-                        if sc == '\\' {
-                            if j < len { expr.push(chars[j]); j += 1; }
-                            continue;
-                        }
-                        if sc == q { break; }
-                    }
-                    continue;
-                }
-                if ec == '{' { depth += 1; }
-                if ec == '}' {
-                    depth = depth.saturating_sub(1);
-                    expr.push(ec);
-                    j += 1;
-                    if depth == 0 { break; }
-                    continue;
-                }
-                expr.push(ec);
-                j += 1;
-            }
-
-            // Only extract if the block contains NO opening HTML tags.
-            // A block with `<letter` inside it is an Angular-style structural
-            // block that the formatter needs to see and indent properly.
-            let inner = &expr[1..expr.len().saturating_sub(1)]; // strip outer { }
-            let has_html = inner.chars().enumerate().any(|(k, ch)| {
-                if ch == '<' {
-                    let next = inner.chars().nth(k + 1).unwrap_or(' ');
-                    next.is_ascii_alphabetic()
-                } else {
-                    false
-                }
-            });
-
-            if !has_html {
-                let placeholder = format!("__TMPL{}__", exprs.len());
-                exprs.push(expr);
-                out.push_str(&placeholder);
-                i = j;
-                continue;
-            }
-            // Fall through: emit the `{` and let the formatter handle it.
-        }
-
-        out.push(chars[i]);
-        i += 1;
-    }
-
-    (out, exprs)
-}
-
-/// Restore placeholders produced by `extract_template_expressions`.
-fn restore_template_expressions(formatted: &str, exprs: &[String]) -> String {
-    let mut result = formatted.to_string();
-    for (idx, expr) in exprs.iter().enumerate() {
-        let placeholder = format!("__TMPL{}__", idx);
-        result = result.replace(&placeholder, expr);
-    }
-    result
-}
-
-/// Restore placeholders produced by `extract_jsx_expressions` back to their
-/// original expression text.
-fn restore_jsx_expressions(formatted: &str, exprs: &[String]) -> String {
-    let mut result = formatted.to_string();
-    for (idx, expr) in exprs.iter().enumerate() {
-        let placeholder = format!("__FUA{}__", idx);
-        result = result.replace(&placeholder, expr);
-    }
-    result
-}
+use args::Args;
+use clap::Parser as _;
 
 fn main() {
     let args = Args::parse();
 
-    // Read input
-    let mut input_text = String::new();
-    if let Some(path) = &args.input {
-        input_text = fs::read_to_string(path).expect("Failed to read input file");
-    } else {
-        io::stdin().read_to_string(&mut input_text).expect("Failed to read stdin");
-    }
-
-    if input_text.trim().is_empty() {
-        eprintln!("Error: No HTML provided.");
+    if let Err(error) = app::run(args) {
+        eprintln!("Error: {error}");
         std::process::exit(1);
-    }
-
-    // Detect whether this is a JS/JSX/TS/TSX file that needs preamble splitting
-    let is_script_file = args.input.as_deref()
-        .and_then(|p| Path::new(p).extension())
-        .map_or(false, |ext| {
-            let e = ext.to_string_lossy().to_lowercase();
-            e == "jsx" || e == "tsx" || e == "js" || e == "ts"
-        });
-
-    let (preamble, html_part) = if is_script_file {
-        split_script_preamble(&input_text)
-    } else {
-        ("", input_text.as_str())
-    };
-
-    if html_part.trim().is_empty() {
-        // Nothing to format – write file as-is
-        if let Some(path) = &args.output {
-            fs::write(path, &input_text).expect("Failed to write output file");
-            println!("Successfully formatted into: {}", path);
-        } else {
-            print!("{}", input_text);
-        }
-        return;
-    }
-
-    // Load configuration
-    let mut config = FormatterConfig::default();
-    if let Some(config_path) = &args.config {
-        let config_str = fs::read_to_string(config_path).expect("Failed to read config file");
-        config = serde_json::from_str(&config_str).expect("Failed to parse config file");
-    }
-
-    // Apply CLI overrides over JSON config
-    if let Some(size) = args.indent_size {
-        config.indent_size = size;
-    }
-    if let Some(tabs) = args.use_tabs {
-        config.use_tabs = tabs;
-    }
-
-    // Always extract <script> / <style> inner content as opaque pass-through.
-    let (html_no_raw, raw_blocks) = extract_raw_blocks(html_part);
-
-    // For HTML files: extract template `{...}` expressions (Vue mustaches, etc.)
-    // that contain no HTML child elements — they're opaque pass-through.
-    // For JSX files: use the broader `extract_jsx_expressions` instead.
-    let (html_no_tmpl, tmpl_exprs) = if !is_script_file {
-        extract_template_expressions(&html_no_raw)
-    } else {
-        (html_no_raw.clone(), Vec::new())
-    };
-
-    // For JSX/TSX files, also extract curly-brace expressions so the formatter
-    // only sees the clean HTML skeleton (they are restored verbatim afterwards).
-    let (html_to_parse, jsx_exprs) = if is_script_file {
-        extract_jsx_expressions(&html_no_raw)
-    } else {
-        (html_no_tmpl.clone(), Vec::new())
-    };
-
-    // Parse and format only the HTML/JSX portion
-    let parser = Parser::new(&html_to_parse);
-    let green_node = parser.parse();
-    let syntax_node = SyntaxNode::new_root(green_node);
-
-    // Determine plugin path: CLI flag takes precedence, then config.plugin.path.
-    // Paths from the config file are resolved relative to the config file's
-    // directory so that `"./fua_plugin_angular.wasm"` just works.
-    let plugin_path: Option<String> = args.plugin.clone().or_else(|| {
-        let raw = config.plugin.path.as_deref()?;
-        if let Some(cfg_path) = &args.config {
-            let cfg_dir = Path::new(cfg_path).parent().unwrap_or(Path::new("."));
-            Some(cfg_dir.join(raw).to_string_lossy().into_owned())
-        } else {
-            Some(raw.to_string())
-        }
-    });
-
-    let mut formatter = Formatter::new(config);
-    if let Some(ref path) = plugin_path {
-        if let Err(e) = formatter.load_plugin(path) {
-            eprintln!("Error: failed to load plugin '{}': {}", path, e);
-            std::process::exit(1);
-        }
-    }
-    let formatted_html = formatter.format(&syntax_node);
-
-    // Restore in reverse order: JSX exprs → template exprs → raw blocks.
-    let after_jsx = if is_script_file {
-        restore_jsx_expressions(&formatted_html, &jsx_exprs)
-    } else {
-        formatted_html
-    };
-    let after_tmpl = if !is_script_file {
-        restore_template_expressions(&after_jsx, &tmpl_exprs)
-    } else {
-        after_jsx
-    };
-    let restored = restore_raw_blocks(&after_tmpl, &raw_blocks);
-
-    let output_text = format!("{}{}", preamble, restored);
-
-    // Write output
-    if let Some(path) = &args.output {
-        fs::write(path, output_text).expect("Failed to write output file");
-        println!("Successfully formatted into: {}", path);
-    } else {
-        print!("{}", output_text);
     }
 }
 
@@ -1070,7 +911,7 @@ fn main() {
 # FILE: crates/core/Cargo.toml
 ```toml
 [package]
-name = "core"
+name = "fua-core"
 version = "0.1.0"
 edition = "2024"
 
@@ -1082,6 +923,109 @@ num-derive = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 extism = "1"
+fua-plugin-api = { path = "../fua-plugin-api" }
+
+```
+
+# FILE: crates/core/src/architecture_tests.rs
+```rust
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    fn collect_rust_sources(dir: &Path) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        collect_rust_sources_into(dir, &mut files);
+        files
+    }
+
+    fn collect_rust_sources_into(dir: &Path, files: &mut Vec<PathBuf>) {
+        for entry in fs::read_dir(dir).expect("read core source directory") {
+            let entry = entry.expect("directory entry");
+            let path = entry.path();
+            if path.is_dir() {
+                collect_rust_sources_into(&path, files);
+            } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+                files.push(path);
+            }
+        }
+    }
+
+    fn source_path(relative: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join(relative)
+    }
+
+    fn read_source(path: &Path) -> String {
+        fs::read_to_string(path).expect("read source file")
+    }
+
+    #[test]
+    fn core_source_stays_framework_agnostic() {
+        let src_root = source_path("");
+        let files = collect_rust_sources(&src_root);
+
+        let forbidden_terms = [
+            "angular", "vue", "jsx", "tailwind", "react", "svelte", "ngif", "ngclass", "ngmodel",
+        ];
+
+        for file in files {
+            if file.file_name().and_then(|name| name.to_str()) == Some("architecture_tests.rs") {
+                continue;
+            }
+            let contents = read_source(&file);
+            let lower = contents.to_lowercase();
+            for term in forbidden_terms {
+                assert!(
+                    !lower.contains(term),
+                    "found forbidden framework term '{term}' in {}",
+                    file.display()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn engine_stays_free_of_cli_and_io_concerns() {
+        let engine_source = read_source(&source_path("engine.rs")).to_lowercase();
+        let forbidden_terms = [
+            "std::fs",
+            "stdin",
+            "stdout",
+            "println!",
+            "eprintln!",
+            "clap::",
+        ];
+
+        for term in forbidden_terms {
+            assert!(
+                !engine_source.contains(term),
+                "engine.rs should remain an orchestration layer without '{term}'"
+            );
+        }
+    }
+
+    #[test]
+    fn formatter_modules_do_not_depend_on_the_parser_layer() {
+        let formatter_root = source_path("formatter");
+
+        for file in collect_rust_sources(&formatter_root) {
+            let contents = read_source(&file);
+            assert!(
+                !contents.contains("crate::parser"),
+                "formatter module should not import the parser directly: {}",
+                file.display()
+            );
+            assert!(
+                !contents.contains("Parser::new"),
+                "formatter module should not construct parsers directly: {}",
+                file.display()
+            );
+        }
+    }
+}
 
 ```
 
@@ -1098,7 +1042,7 @@ pub struct PluginConfig {
     /// When present the CLI will load it automatically (no `--plugin` flag needed).
     pub path: Option<String>,
     /// Arbitrary plugin-specific options forwarded verbatim to the WASM guest
-    /// as a JSON string via `NodeData.plugin_options`.
+    /// as a JSON string on each generic hook request.
     pub options: Option<Value>,
 }
 
@@ -1112,8 +1056,10 @@ pub struct FormatterConfig {
     pub wrap_attributes: bool,
     pub single_quotes: bool,
     pub wrap_content: bool,
-    pub indent_condition_groups: bool,
     pub inline_short_elements_max_len: usize,
+    /// Preferred plugin list for the formatter host.
+    pub plugins: Vec<PluginConfig>,
+    /// Legacy single-plugin configuration kept for backward compatibility.
     /// Optional WASM plugin configuration.
     pub plugin: PluginConfig,
 }
@@ -1128,684 +1074,145 @@ impl Default for FormatterConfig {
             wrap_attributes: false,
             single_quotes: false,
             wrap_content: false,
-            indent_condition_groups: false,
             inline_short_elements_max_len: 80,
+            plugins: Vec::new(),
             plugin: PluginConfig::default(),
         }
     }
+}
+
+impl FormatterConfig {
+    pub fn plugin_configs(&self) -> Vec<PluginConfig> {
+        let mut plugins = self.plugins.clone();
+        if self.plugin.path.is_some() {
+            plugins.push(self.plugin.clone());
+        }
+        plugins
+    }
+}
+
+```
+
+# FILE: crates/core/src/engine.rs
+```rust
+use crate::config::{FormatterConfig, PluginConfig};
+use crate::formatter::Formatter;
+use crate::parser::Parser;
+use crate::plugins::PluginHost;
+use crate::syntax::SyntaxNode;
+
+pub struct FormatEngine {
+    config: FormatterConfig,
+    plugin_host: PluginHost,
+}
+
+impl FormatEngine {
+    pub fn new(config: FormatterConfig) -> Self {
+        Self {
+            config,
+            plugin_host: PluginHost::new(),
+        }
+    }
+
+    pub fn load_plugin(
+        &mut self,
+        path: &str,
+        plugin_options: Option<String>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.plugin_host.load_wasm(path, plugin_options)
+    }
+
+    pub fn load_plugin_config(
+        &mut self,
+        plugin: &PluginConfig,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let Some(path) = plugin.path.as_deref() else {
+            return Ok(());
+        };
+
+        self.load_plugin(path, plugin.options.as_ref().map(|value| value.to_string()))
+    }
+
+    pub fn format(self, input: &str) -> String {
+        let syntax_root = parse_syntax_tree(input);
+        self.into_formatter().format(&syntax_root)
+    }
+
+    fn into_formatter(self) -> Formatter {
+        Formatter::with_plugin_host(self.config, self.plugin_host)
+    }
+}
+
+fn parse_syntax_tree(input: &str) -> SyntaxNode {
+    let parser = Parser::new(input);
+    SyntaxNode::new_root(parser.parse())
 }
 
 ```
 
 # FILE: crates/core/src/formatter.rs
 ```rust
+mod content;
+mod context;
+mod hooks;
+mod output;
+mod tags;
+mod traversal;
+
 use crate::config::FormatterConfig;
-use crate::plugins::{NodeData, PluginManager, PluginResult};
-use crate::syntax::{SyntaxKind, SyntaxNode};
-use rowan::NodeOrToken;
-
-fn is_block_element(_tag_name: &str) -> bool {
-    true
-}
-
-fn get_tag_name(node: &SyntaxNode) -> Option<String> {
-    for element in node.children_with_tokens() {
-        if let NodeOrToken::Node(n) = element {
-            if n.kind() == SyntaxKind::OPEN_TAG.into() {
-                for tag_element in n.children_with_tokens() {
-                    if let NodeOrToken::Token(t) = tag_element {
-                        if t.kind() == SyntaxKind::IDENT.into() {
-                            return Some(t.text().to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-fn kind_label(kind: SyntaxKind) -> &'static str {
-    match kind {
-        SyntaxKind::ELEMENT          => "ELEMENT",
-        SyntaxKind::ROOT             => "ROOT",
-        SyntaxKind::OPEN_TAG         => "OPEN_TAG",
-        SyntaxKind::CLOSE_TAG        => "CLOSE_TAG",
-        SyntaxKind::SELF_CLOSING_TAG => "SELF_CLOSING_TAG",
-        _                            => "OTHER",
-    }
-}
+use crate::plugins::PluginHost;
+use crate::syntax::SyntaxNode;
 
 pub struct Formatter {
     config: FormatterConfig,
+    plugin_host: PluginHost,
+}
+
+struct FormatSession {
+    config: FormatterConfig,
+    plugin_host: PluginHost,
     output: String,
     current_indent: usize,
-    plugin_manager: PluginManager,
-    /// Most-recently-seen IDENT inside an opening tag (for attribute-name hint).
-    last_attr_name: String,
-    /// Cached JSON of `config.plugin.options`.
-    plugin_options_json: Option<String>,
-
-    // ── Angular @if / @for condition state ────────────────────────────────────
-    /// Depth of `(` chars seen after an Angular block-opener IDENT.
-    /// 0 = not inside a condition; 1 = directly inside `@if (`; etc.
-    angular_cond_depth: usize,
-    /// The `current_indent` value at the moment the block-opener was emitted.
-    /// Condition lines are indented relative to this value.
-    angular_cond_base_indent: usize,
-    /// True immediately after emitting an Angular block-opener (`@if`, `@for`…)
-    /// so the next TEXT `(` token triggers condition-mode.
-    just_saw_block_opener: bool,
 }
 
 impl Formatter {
     pub fn new(config: FormatterConfig) -> Self {
-        let plugin_options_json = config.plugin.options.as_ref().map(|v| v.to_string());
+        Self::with_plugin_host(config, PluginHost::new())
+    }
+
+    pub fn with_plugin_host(config: FormatterConfig, plugin_host: PluginHost) -> Self {
         Self {
             config,
-            output: String::new(),
-            current_indent: 0,
-            plugin_manager: PluginManager::new(),
-            last_attr_name: String::new(),
-            plugin_options_json,
-            angular_cond_depth: 0,
-            angular_cond_base_indent: 0,
-            just_saw_block_opener: false,
+            plugin_host,
         }
     }
 
-    pub fn load_plugin(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        self.plugin_manager.load_wasm(path)
-    }
-
-    pub fn get_indent(&self) -> String {
-        if self.config.use_tabs {
-            "\t".repeat(self.current_indent)
-        } else {
-            " ".repeat(self.current_indent * self.config.indent_size)
-        }
-    }
-
-    fn indent_str(n: usize, use_tabs: bool, indent_size: usize) -> String {
-        if use_tabs { "\t".repeat(n) } else { " ".repeat(n * indent_size) }
-    }
-
-    fn push_newlines_with_indent(&mut self, count: usize) {
-        let mut trim_len = self.output.len();
-        for c in self.output.chars().rev() {
-            if c == ' ' || c == '\t' {
-                trim_len -= c.len_utf8();
-            } else {
-                break;
-            }
-        }
-        self.output.truncate(trim_len);
-
-        let mut trailing_newlines = 0;
-        for c in self.output.chars().rev() {
-            if c == '\n' {
-                trailing_newlines += 1;
-            } else {
-                break;
-            }
-        }
-
-        while trailing_newlines < count {
-            self.output.push('\n');
-            trailing_newlines += 1;
-        }
-        self.output.push_str(&self.get_indent());
-    }
-
-    fn emit_plugin_result(&mut self, result: PluginResult) {
-        if result.indent_delta < 0 {
-            self.current_indent = self
-                .current_indent
-                .saturating_sub((-result.indent_delta) as usize);
-        }
-        if result.prepend_newline {
-            self.push_newlines_with_indent(1);
-        } else if result.prepend_space {
-            let last = self.output.chars().next_back().unwrap_or('\0');
-            if last != ' ' && last != '\t' && last != '\n' {
-                self.output.push(' ');
-            }
-        }
-        self.output.push_str(&result.output);
-        if result.indent_delta > 0 {
-            self.current_indent += result.indent_delta as usize;
-        }
-    }
-
-    fn make_node_data<'a>(
-        kind: &'a str,
-        text: &'a str,
-        parent_kind: &'a str,
-        attr_name: &'a str,
-        plugin_options: Option<&'a str>,
-        current_indent: usize,
-        indent_size: usize,
-        use_tabs: bool,
-    ) -> NodeData<'a> {
-        NodeData {
-            kind,
-            text,
-            parent_kind,
-            attribute_name: attr_name,
-            current_indent,
-            indent_size,
-            use_tabs,
-            plugin_options,
-        }
-    }
-
-    pub fn format(mut self, root: &SyntaxNode) -> String {
-        self.format_node_internal(root, false);
-        self.output
-    }
-
-    fn format_node_internal(&mut self, node: &SyntaxNode, force_inline: bool) {
-        let prev_indent = self.current_indent;
-        let is_block_elem = node.kind() == SyntaxKind::ELEMENT.into()
-            && get_tag_name(node)
-                .as_deref()
-                .map_or(false, is_block_element);
-
-        for element in node.children_with_tokens() {
-            match element {
-                NodeOrToken::Node(n) => {
-                    if n.kind() == SyntaxKind::ELEMENT.into() {
-                        let child_is_block =
-                            get_tag_name(&n).as_deref().map_or(false, is_block_element);
-                        let force_inline_child = is_element_simple_and_short(
-                            &n,
-                            self.config.inline_short_elements_max_len,
-                        );
-
-                        if child_is_block && !force_inline && !force_inline_child {
-                            self.push_newlines_with_indent(1);
-                        }
-
-                        self.format_node_internal(&n, force_inline || force_inline_child);
-                    } else if n.kind() == SyntaxKind::OPEN_TAG.into() {
-                        self.format_node_internal(&n, force_inline);
-                        if is_block_elem {
-                            self.current_indent += 1;
-                        }
-                    } else if n.kind() == SyntaxKind::CLOSE_TAG.into() {
-                        if is_block_elem {
-                            self.current_indent = self.current_indent.saturating_sub(1);
-                            if !force_inline {
-                                self.push_newlines_with_indent(1);
-                            }
-                        }
-                        self.format_node_internal(&n, force_inline);
-                    } else {
-                        self.format_node_internal(&n, force_inline);
-                    }
-                }
-
-                NodeOrToken::Token(ref t) => {
-                    let text = t.text();
-                    let kind = t.kind();
-                    let is_content = node.kind() == SyntaxKind::ELEMENT.into()
-                        || node.kind() == SyntaxKind::ROOT.into();
-
-                    // ── WHITESPACE ───────────────────────────────────────────
-                    if kind == SyntaxKind::WHITESPACE.into() {
-                        if node.kind() == SyntaxKind::OPEN_TAG.into()
-                            || node.kind() == SyntaxKind::SELF_CLOSING_TAG.into()
-                        {
-                            let next = element.next_sibling_or_token();
-                            let next_is_bracket = next.as_ref().map_or(false, |e| {
-                                e.kind() == SyntaxKind::CLOSE_ANGLE.into()
-                                    || e.kind() == SyntaxKind::SLASH_CLOSE_ANGLE.into()
-                            });
-
-                            if next_is_bracket {
-                                if self.config.bracket_same_line || force_inline {
-                                    if next.as_ref().unwrap().kind()
-                                        == SyntaxKind::SLASH_CLOSE_ANGLE.into()
-                                    {
-                                        self.output.push(' ');
-                                    }
-                                    continue;
-                                } else if self.config.wrap_attributes {
-                                    self.push_newlines_with_indent(1);
-                                    continue;
-                                }
-                            }
-
-                            if text.contains('\n') || self.config.wrap_attributes {
-                                if force_inline {
-                                    self.output.push(' ');
-                                } else {
-                                    self.push_newlines_with_indent(1);
-                                    if self.config.use_tabs {
-                                        self.output.push('\t');
-                                    } else {
-                                        self.output.push_str(
-                                            &" ".repeat(self.config.indent_size),
-                                        );
-                                    }
-                                }
-                            } else {
-                                self.output.push(' ');
-                            }
-                        } else if node.kind() == SyntaxKind::CLOSE_TAG.into() {
-                            // drop whitespace inside `</div >`
-                        } else {
-                            // ── Content whitespace ───────────────────────────
-                            let has_nl = text.contains('\n');
-
-                            // Inside an Angular @if / @for condition paren:
-                            // optionally indent based on the current paren depth.
-                            if self.angular_cond_depth > 0 && has_nl {
-                                let next = element.next_sibling_or_token();
-                                let next_is_close_paren =
-                                    next.as_ref().map_or(false, |e| match e {
-                                        NodeOrToken::Token(t) => {
-                                            t.kind() == SyntaxKind::TEXT.into()
-                                                && t.text() == ")"
-                                        }
-                                        _ => false,
-                                    });
-
-                                let target = if self.config.indent_condition_groups {
-                                    self.angular_cond_base_indent
-                                        + self.angular_cond_depth
-                                        - usize::from(next_is_close_paren)
-                                } else if next_is_close_paren {
-                                    self.angular_cond_base_indent
-                                } else {
-                                    self.angular_cond_base_indent + 1
-                                };
-
-                                let saved = self.current_indent;
-                                self.current_indent = target;
-                                self.push_newlines_with_indent(1);
-                                self.current_indent = saved;
-                                continue;
-                            }
-
-                            let next = element.next_sibling_or_token();
-                            let next_text = next.as_ref().and_then(|e| {
-                                if let NodeOrToken::Token(nt) = e {
-                                    Some(nt.text())
-                                } else {
-                                    None
-                                }
-                            });
-
-                            let newlines = text.matches('\n').count();
-
-                            if self.plugin_manager.has_plugin()
-                                && next_text.map(|t| t.starts_with('@')).unwrap_or(false)
-                            {
-                                if newlines > 1 {
-                                    self.push_newlines_with_indent(2);
-                                }
-                                continue;
-                            }
-
-                            let next_is_block = next.as_ref().map_or(false, |e| {
-                                if e.kind() == SyntaxKind::ELEMENT.into() {
-                                    let n = e.as_node().unwrap();
-                                    !is_element_simple_and_short(
-                                        n,
-                                        self.config.inline_short_elements_max_len,
-                                    )
-                                } else {
-                                    false
-                                }
-                            });
-
-                            let is_next_close_tag_of_block = next
-                                .as_ref()
-                                .map_or(false, |e| e.kind() == SyntaxKind::CLOSE_TAG.into());
-
-                            if next_is_block || is_next_close_tag_of_block {
-                                if newlines > 1 {
-                                    self.push_newlines_with_indent(2);
-                                }
-                                continue;
-                            }
-
-                            let mut prev_non_ws = element.prev_sibling_or_token();
-                            while let Some(p) = &prev_non_ws {
-                                if p.kind() == SyntaxKind::WHITESPACE.into() {
-                                    prev_non_ws = p.prev_sibling_or_token();
-                                } else {
-                                    break;
-                                }
-                            }
-                            let is_after_open_tag = prev_non_ws
-                                .as_ref()
-                                .map_or(false, |e| e.kind() == SyntaxKind::OPEN_TAG.into());
-
-                            if (has_nl
-                                || (is_after_open_tag && self.config.wrap_content))
-                                && !force_inline
-                            {
-                                if newlines > 1 {
-                                    self.push_newlines_with_indent(2);
-                                } else {
-                                    self.push_newlines_with_indent(1);
-                                }
-                            } else if force_inline {
-                                let is_before_close_tag = next.as_ref().map_or(false, |e| {
-                                    e.kind() == SyntaxKind::CLOSE_TAG.into()
-                                });
-                                if !is_after_open_tag && !is_before_close_tag {
-                                    self.output.push(' ');
-                                }
-                            } else {
-                                self.output.push(' ');
-                            }
-                        }
-                        continue;
-
-                    // ── STRING DOUBLE ─────────────────────────────────────────
-                    } else if kind == SyntaxKind::STRING_DOUBLE.into() {
-                        let in_tag = node.kind() == SyntaxKind::OPEN_TAG.into()
-                            || node.kind() == SyntaxKind::SELF_CLOSING_TAG.into();
-
-                        if in_tag && self.plugin_manager.has_plugin() {
-                            let attr = self.last_attr_name.clone();
-                            let opts = self.plugin_options_json.clone();
-                            let node_data = Self::make_node_data(
-                                "STRING_DOUBLE",
-                                text,
-                                kind_label(node.kind()),
-                                &attr,
-                                opts.as_deref(),
-                                self.current_indent,
-                                self.config.indent_size,
-                                self.config.use_tabs,
-                            );
-                            if let Some(result) =
-                                self.plugin_manager.call_format_hook(&node_data)
-                            {
-                                self.emit_plugin_result(result);
-                                continue;
-                            }
-                        }
-
-                        if self.config.single_quotes && text.len() >= 2 {
-                            let inner = &text[1..text.len() - 1];
-                            let escaped = inner.replace("'", "&apos;");
-                            self.output.push('\'');
-                            self.output.push_str(&escaped);
-                            self.output.push('\'');
-                        } else {
-                            self.output.push_str(text);
-                        }
-
-                    // ── STRING SINGLE ─────────────────────────────────────────
-                    } else if kind == SyntaxKind::STRING_SINGLE.into() {
-                        let in_tag = node.kind() == SyntaxKind::OPEN_TAG.into()
-                            || node.kind() == SyntaxKind::SELF_CLOSING_TAG.into();
-
-                        if in_tag && self.plugin_manager.has_plugin() {
-                            let attr = self.last_attr_name.clone();
-                            let opts = self.plugin_options_json.clone();
-                            let node_data = Self::make_node_data(
-                                "STRING_SINGLE",
-                                text,
-                                kind_label(node.kind()),
-                                &attr,
-                                opts.as_deref(),
-                                self.current_indent,
-                                self.config.indent_size,
-                                self.config.use_tabs,
-                            );
-                            if let Some(result) =
-                                self.plugin_manager.call_format_hook(&node_data)
-                            {
-                                self.emit_plugin_result(result);
-                                continue;
-                            }
-                        }
-
-                        if !self.config.single_quotes && text.len() >= 2 {
-                            let inner = &text[1..text.len() - 1];
-                            let escaped = inner.replace("\"", "&quot;");
-                            self.output.push('"');
-                            self.output.push_str(&escaped);
-                            self.output.push('"');
-                        } else {
-                            self.output.push_str(text);
-                        }
-
-                    // ── CLOSE ANGLE / SELF-CLOSE ──────────────────────────────
-                    } else if kind == SyntaxKind::CLOSE_ANGLE.into()
-                        || kind == SyntaxKind::SLASH_CLOSE_ANGLE.into()
-                    {
-                        let prev = element.prev_sibling_or_token();
-                        let prev_is_whitespace = prev
-                            .as_ref()
-                            .map_or(false, |e| e.kind() == SyntaxKind::WHITESPACE.into());
-
-                        let in_opening = node.kind() == SyntaxKind::OPEN_TAG.into()
-                            || node.kind() == SyntaxKind::SELF_CLOSING_TAG.into();
-                        if in_opening
-                            && !self.config.bracket_same_line
-                            && self.config.wrap_attributes
-                        {
-                            if !prev_is_whitespace && !force_inline {
-                                self.push_newlines_with_indent(1);
-                            }
-                        }
-                        self.output.push_str(text);
-
-                    // ── COMMENT ───────────────────────────────────────────────
-                    } else if kind == SyntaxKind::COMMENT.into() {
-                        self.push_newlines_with_indent(1);
-                        self.output.push_str(text);
-
-                    // ── IDENT ─────────────────────────────────────────────────
-                    } else if kind == SyntaxKind::IDENT.into() {
-                        let in_tag = node.kind() == SyntaxKind::OPEN_TAG.into()
-                            || node.kind() == SyntaxKind::SELF_CLOSING_TAG.into();
-
-                        if in_tag {
-                            self.last_attr_name = text.to_string();
-                        }
-
-                        let is_elem_or_root = node.kind() == SyntaxKind::ELEMENT.into()
-                            || node.kind() == SyntaxKind::ROOT.into();
-
-                        let mut prev_non_ws = element.prev_sibling_or_token();
-                        while let Some(p) = &prev_non_ws {
-                            if p.kind() == SyntaxKind::WHITESPACE.into() {
-                                prev_non_ws = p.prev_sibling_or_token();
-                            } else {
-                                break;
-                            }
-                        }
-                        let is_after_open_tag = prev_non_ws
-                            .as_ref()
-                            .map_or(false, |e| e.kind() == SyntaxKind::OPEN_TAG.into());
-
-                        if is_after_open_tag && self.config.wrap_content && !force_inline {
-                            self.push_newlines_with_indent(1);
-                        }
-
-                        if is_elem_or_root {
-                            let opts = self.plugin_options_json.clone();
-                            let node_data = Self::make_node_data(
-                                "IDENT",
-                                text,
-                                kind_label(node.kind()),
-                                "",
-                                opts.as_deref(),
-                                self.current_indent,
-                                self.config.indent_size,
-                                self.config.use_tabs,
-                            );
-                            if let Some(result) =
-                                self.plugin_manager.call_format_hook(&node_data)
-                            {
-                                // If the plugin pushed to a new line (block opener like @if),
-                                // the next `(` starts the condition state machine.
-                                if result.prepend_newline {
-                                    self.just_saw_block_opener = true;
-                                }
-                                self.emit_plugin_result(result);
-                                continue;
-                            }
-                        }
-
-                        self.output.push_str(text);
-
-                    // ── TEXT (content nodes) ──────────────────────────────────
-                    } else if kind == SyntaxKind::TEXT.into() {
-                        let is_elem_or_root = node.kind() == SyntaxKind::ELEMENT.into()
-                            || node.kind() == SyntaxKind::ROOT.into();
-
-                        if is_elem_or_root {
-                            // ── Angular condition paren tracking ──────────────
-                            if text == "(" {
-                                if self.just_saw_block_opener {
-                                    // `@if (` — enter condition mode
-                                    self.just_saw_block_opener = false;
-                                    self.angular_cond_depth = 1;
-                                    self.angular_cond_base_indent = self.current_indent;
-                                } else if self.angular_cond_depth > 0 {
-                                    self.angular_cond_depth += 1;
-                                }
-                                self.output.push('(');
-                                continue;
-                            }
-
-                            if text == ")" && self.angular_cond_depth > 0 {
-                                self.angular_cond_depth =
-                                    self.angular_cond_depth.saturating_sub(1);
-                                self.output.push(')');
-                                continue;
-                            }
-
-                            // ── Plugin hook for other TEXT tokens ─────────────
-                            let opts = self.plugin_options_json.clone();
-                            let node_data = Self::make_node_data(
-                                "TEXT",
-                                text,
-                                kind_label(node.kind()),
-                                "",
-                                opts.as_deref(),
-                                self.current_indent,
-                                self.config.indent_size,
-                                self.config.use_tabs,
-                            );
-                            if let Some(result) =
-                                self.plugin_manager.call_format_hook(&node_data)
-                            {
-                                self.emit_plugin_result(result);
-                                continue;
-                            }
-                        }
-
-                        // ── Default TEXT handling (collapse whitespace) ────────
-                        let mut prev_non_ws = element.prev_sibling_or_token();
-                        while let Some(p) = &prev_non_ws {
-                            if p.kind() == SyntaxKind::WHITESPACE.into() {
-                                prev_non_ws = p.prev_sibling_or_token();
-                            } else {
-                                break;
-                            }
-                        }
-                        let is_after_open_tag = prev_non_ws
-                            .as_ref()
-                            .map_or(false, |e| e.kind() == SyntaxKind::OPEN_TAG.into());
-
-                        let mut next_non_ws = element.next_sibling_or_token();
-                        while let Some(n) = &next_non_ws {
-                            if n.kind() == SyntaxKind::WHITESPACE.into() {
-                                next_non_ws = n.next_sibling_or_token();
-                            } else {
-                                break;
-                            }
-                        }
-                        let is_before_close_tag = next_non_ws
-                            .as_ref()
-                            .map_or(false, |e| e.kind() == SyntaxKind::CLOSE_TAG.into());
-
-                        let mut collapsed = if force_inline {
-                            let mut s = text
-                                .replace('\r', "")
-                                .replace('\n', " ")
-                                .replace('\t', " ");
-                            while s.contains("  ") {
-                                s = s.replace("  ", " ");
-                            }
-                            if is_after_open_tag {
-                                s = s.trim_start().to_string();
-                            }
-                            if is_before_close_tag {
-                                s = s.trim_end().to_string();
-                            }
-                            s
-                        } else {
-                            text.replace("  ", " ")
-                        };
-
-                        if is_after_open_tag
-                            && self.config.wrap_content
-                            && !collapsed.trim().is_empty()
-                            && !force_inline
-                        {
-                            self.output.push('\n');
-                            self.output.push_str(&self.get_indent());
-                            collapsed = collapsed.trim_start().to_string();
-                        }
-
-                        self.output.push_str(&collapsed);
-
-                    // ── FALLTHROUGH ───────────────────────────────────────────
-                    } else {
-                        // Reset block-opener flag on any unrecognised token
-                        self.just_saw_block_opener = false;
-                        self.output.push_str(text);
-                    }
-                }
-            }
-        }
-
-        self.current_indent = prev_indent;
+    pub fn format(self, root: &SyntaxNode) -> String {
+        FormatSession::new(self.config, self.plugin_host).format(root)
     }
 }
 
-fn is_element_simple_and_short(node: &SyntaxNode, max_len: usize) -> bool {
-    let mut has_complex = false;
-    for c in node.children_with_tokens() {
-        if c.kind() == SyntaxKind::ELEMENT.into() || c.kind() == SyntaxKind::COMMENT.into() {
-            has_complex = true;
-            break;
+impl FormatSession {
+    fn new(config: FormatterConfig, plugin_host: PluginHost) -> Self {
+        Self {
+            config,
+            plugin_host,
+            output: String::new(),
+            current_indent: 0,
         }
     }
-    if has_complex {
-        return false;
-    }
-
-    let mut total_len = 0;
-    for t in node.descendants_with_tokens() {
-        if let NodeOrToken::Token(tok) = t {
-            if tok.kind() != SyntaxKind::WHITESPACE.into() {
-                total_len += tok.text().len();
-            }
-        }
-    }
-
-    total_len <= max_len
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::Parser;
+    use crate::plugins::{FormatPlugin, PluginHost};
+    use crate::syntax::SyntaxNode;
+    use fua_plugin_api::{HookRequest, HookResponse, Replacement};
 
     #[test]
-    fn test_smart_whitespace_formatting() {
+    fn formats_plain_html_without_plugins() {
         let input = "<div id=\"app\">   <p>Hello <span>world</span></p></div>";
 
         let parser = Parser::new(input);
@@ -1816,8 +1223,67 @@ mod tests {
         let output = formatter.format(&syntax_node);
 
         let expected = "\n<div id=\"app\">\n  <p>Hello <span>world</span>\n  </p>\n</div>";
-
         assert_eq!(output, expected);
+    }
+
+    struct UppercaseTextPlugin;
+
+    impl FormatPlugin for UppercaseTextPlugin {
+        fn handle_hook(&mut self, request: &HookRequest<'_>) -> HookResponse {
+            match request {
+                HookRequest::Token(token) if token.kind == "IDENT" && token.text == "Hello" => {
+                    HookResponse::replace(Replacement::text("HELLO"))
+                }
+                _ => HookResponse::Continue,
+            }
+        }
+    }
+
+    #[test]
+    fn plugin_hooks_only_apply_when_a_plugin_is_registered() {
+        let input = "<p>Hello</p>";
+        let parser = Parser::new(input);
+        let syntax_node = SyntaxNode::new_root(parser.parse());
+
+        let without_plugins = Formatter::new(FormatterConfig::default()).format(&syntax_node);
+        assert_eq!(without_plugins, "\n<p>Hello\n</p>");
+
+        let mut plugin_host = PluginHost::new();
+        plugin_host.register(Box::new(UppercaseTextPlugin));
+        let with_plugins = Formatter::with_plugin_host(FormatterConfig::default(), plugin_host)
+            .format(&syntax_node);
+
+        assert_eq!(with_plugins, "\n<p>HELLO\n</p>");
+    }
+
+    struct AttributeValuePlugin;
+
+    impl FormatPlugin for AttributeValuePlugin {
+        fn handle_hook(&mut self, request: &HookRequest<'_>) -> HookResponse {
+            match request {
+                HookRequest::Token(token)
+                    if token.kind == "STRING_DOUBLE"
+                        && token.context.attribute_name.as_deref() == Some("data-role") =>
+                {
+                    HookResponse::replace(Replacement::text("\"widget\""))
+                }
+                _ => HookResponse::Continue,
+            }
+        }
+    }
+
+    #[test]
+    fn attribute_value_hooks_receive_the_current_attribute_name() {
+        let input = r#"<div id="app" data-role="card"></div>"#;
+        let parser = Parser::new(input);
+        let syntax_node = SyntaxNode::new_root(parser.parse());
+
+        let mut plugin_host = PluginHost::new();
+        plugin_host.register(Box::new(AttributeValuePlugin));
+        let output = Formatter::with_plugin_host(FormatterConfig::default(), plugin_host)
+            .format(&syntax_node);
+
+        assert_eq!(output, "\n<div id=\"app\" data-role=\"widget\">\n</div>");
     }
 }
 
@@ -1865,9 +1331,9 @@ pub enum Token {
     #[token("=")]
     Equals,
 
-    /// Permissive identifiers: tags and attributes.
-    /// Captures standard names as well as Angular (*ngIf, [(ngModel)]) and Vue (@click, :disabled).
-    #[regex(r"[a-zA-Z0-9_\-\*\[\]\@\:\$]+")]
+    /// Permissive identifiers for tag names, attribute names, and common
+    /// template-extension sigils without hard-coding any framework semantics.
+    #[regex(r"[a-zA-Z0-9_\-\*\[\]\(\)\@\:\$\#\.]+")]
     Ident,
 
     #[regex(r#""[^"]*""#)]
@@ -1878,7 +1344,7 @@ pub enum Token {
 
     /// Permissive text nodes: capture any sequence of characters not handled by other tokens.
     /// This includes punctuation, non-ascii characters, etc.
-    #[regex(r#"[^a-zA-Z0-9_\-\*\[\]\(\)\@\:\$<>= \t\n\r\f"']+"#)]
+    #[regex(r#"[^a-zA-Z0-9_\-\*\[\]\(\)\@\:\$\#\.<>= \t\n\r\f"']+"#)]
     Text,
 
     /// Fallback for unbalanced quotes or other strict errors
@@ -1904,7 +1370,7 @@ mod tests {
     fn test_standard_html() {
         let input = r#"<div id="main">hello</div>"#;
         let tokens = lex(input);
-        
+
         assert_eq!(
             tokens,
             vec![
@@ -1924,8 +1390,8 @@ mod tests {
     }
 
     #[test]
-    fn test_framework_syntax() {
-        let input = r#"<button @click="doIt" *ngIf="show" [(ngModel)]="val" :disabled="true" />"#;
+    fn test_extension_attribute_syntax() {
+        let input = r#"<button @event="doIt" *show="visible" [(model)]="val" :disabled="true" />"#;
         let tokens = lex(input);
 
         assert_eq!(
@@ -1934,15 +1400,15 @@ mod tests {
                 (Token::OpenAngle, "<"),
                 (Token::Ident, "button"),
                 (Token::Whitespace, " "),
-                (Token::Ident, "@click"),
+                (Token::Ident, "@event"),
                 (Token::Equals, "="),
                 (Token::StringDouble, "\"doIt\""),
                 (Token::Whitespace, " "),
-                (Token::Ident, "*ngIf"),
+                (Token::Ident, "*show"),
                 (Token::Equals, "="),
-                (Token::StringDouble, "\"show\""),
+                (Token::StringDouble, "\"visible\""),
                 (Token::Whitespace, " "),
-                (Token::Ident, "[(ngModel)]"),
+                (Token::Ident, "[(model)]"),
                 (Token::Equals, "="),
                 (Token::StringDouble, "\"val\""),
                 (Token::Whitespace, " "),
@@ -1974,7 +1440,7 @@ mod tests {
                 (Token::CloseAngle, ">"),
             ]
         );
-        
+
         // Ensure total length matches input length
         let mut total_len = 0;
         for (_, slice) in &tokens {
@@ -1990,7 +1456,7 @@ mod tests {
 
         assert_eq!(tokens, vec![(Token::Comment, "<!-- unclosed")]);
     }
-    
+
     #[test]
     fn test_raw_text() {
         let input = "hello, world! 你好!";
@@ -2010,19 +1476,21 @@ mod tests {
         );
     }
 }
+
 ```
 
 # FILE: crates/core/src/lib.rs
 ```rust
-pub mod lexer;
-pub mod syntax;
-pub mod parser;
+#[cfg(test)]
+mod architecture_tests;
 pub mod config;
+pub mod engine;
 pub mod formatter;
+pub mod lexer;
+pub mod parser;
 pub mod plugins;
+pub mod syntax;
 
-// Workaround for num-derive generating `core::option::Option` when the crate itself is named `core`
-pub use std::option;
 ```
 
 # FILE: crates/core/src/parser.rs
@@ -2087,14 +1555,20 @@ impl<'a> Parser<'a> {
         self.builder.finish()
     }
 
+    fn peek_token(&mut self) -> Option<Token> {
+        self.lexer
+            .peek()
+            .map(|(res, _)| res.as_ref().unwrap_or(&Token::Text).clone())
+    }
+
     fn parse_node(&mut self) {
-        if let Some(&(ref res, _)) = self.lexer.peek() {
-            let token = res.as_ref().unwrap_or(&Token::Text);
-            match token {
-                Token::OpenAngle => self.parse_element(),
-                Token::OpenAngleSlash => { self.parse_tag(SyntaxKind::CLOSE_TAG); },
-                _ => self.bump(),
+        match self.peek_token() {
+            Some(Token::OpenAngle) => self.parse_element(),
+            Some(Token::OpenAngleSlash) => {
+                self.parse_tag(SyntaxKind::CLOSE_TAG);
             }
+            Some(_) => self.bump(),
+            None => {}
         }
     }
 
@@ -2110,7 +1584,19 @@ impl<'a> Parser<'a> {
             let lower = tag_name.to_lowercase();
             is_void = matches!(
                 lower.as_str(),
-                "area" | "base" | "br" | "col" | "embed" | "hr" | "img" | "input" | "link" | "meta" | "source" | "track" | "wbr"
+                "area"
+                    | "base"
+                    | "br"
+                    | "col"
+                    | "embed"
+                    | "hr"
+                    | "img"
+                    | "input"
+                    | "link"
+                    | "meta"
+                    | "source"
+                    | "track"
+                    | "wbr"
             );
         }
 
@@ -2119,24 +1605,16 @@ impl<'a> Parser<'a> {
 
         if !is_self_closing && !is_void {
             // Parse children recursively
-            loop {
-                if let Some(&(ref res, _)) = self.lexer.peek() {
-                    let token = res.as_ref().unwrap_or(&Token::Text);
-                    if *token == Token::OpenAngleSlash {
-                        break;
-                    }
-                    self.parse_node();
-                } else {
-                    break; // Graceful EOF fallback
+            while let Some(token) = self.peek_token() {
+                if token == Token::OpenAngleSlash {
+                    break;
                 }
+                self.parse_node();
             }
 
             // Parse close tag if it exists
-            if let Some(&(ref res, _)) = self.lexer.peek() {
-                let token = res.as_ref().unwrap_or(&Token::Text);
-                if *token == Token::OpenAngleSlash {
-                    self.parse_tag(SyntaxKind::CLOSE_TAG);
-                }
+            if matches!(self.peek_token(), Some(Token::OpenAngleSlash)) {
+                self.parse_tag(SyntaxKind::CLOSE_TAG);
             }
         }
 
@@ -2146,21 +1624,20 @@ impl<'a> Parser<'a> {
     fn parse_tag(&mut self, kind: SyntaxKind) -> bool {
         self.builder.start_node(kind.into());
         let mut is_self_closing = false;
-        
+
         // bump `<` or `</`
         self.bump();
 
         // bump everything until `>` or `/>`
-        while let Some(&(ref res, _)) = self.lexer.peek() {
-            let token = res.as_ref().unwrap_or(&Token::Text);
-            let is_close = *token == Token::CloseAngle || *token == Token::SlashCloseAngle;
-            
-            if *token == Token::SlashCloseAngle {
+        while let Some(token) = self.peek_token() {
+            let is_close = token == Token::CloseAngle || token == Token::SlashCloseAngle;
+
+            if token == Token::SlashCloseAngle {
                 is_self_closing = true;
             }
-            
+
             self.bump();
-            
+
             if is_close {
                 break;
             }
@@ -2180,9 +1657,9 @@ mod tests {
     fn test_lossless_parser() {
         let input = r#"
             <!-- Component wrapper -->
-            <div id="app" *ngIf="show" @click="handle">
+            <div id="app" *show="visible" @event="handle">
                 hello world! 
-                <button [(ngModel)]="value" :disabled="false" />
+                <button [(model)]="value" :disabled="false" />
                 <Closing / > </ Closing >
             </div>
         "#;
@@ -2192,7 +1669,7 @@ mod tests {
         let syntax_node = SyntaxNode::new_root(green_node);
 
         let reconstructed = syntax_node.to_string();
-        
+
         assert_eq!(
             input, reconstructed,
             "The rebuilt source text must be byte-for-byte identical to the original input."
@@ -2222,103 +1699,128 @@ mod tests {
 
 # FILE: crates/core/src/plugins.rs
 ```rust
+use std::borrow::Cow;
+
 use extism::{Manifest, Plugin, Wasm};
-use serde::{Deserialize, Serialize};
+use fua_plugin_api::{HANDLE_HOOK_EXPORT, HookRequest, HookResponse, Replacement};
 
-// ── Data contract shared between host and all guest plugins ──────────────────
-
-/// Serialized and sent to the WASM plugin for every token the host wants
-/// to offer for pre-emption.  The plugin returns [`PluginResult`] if it
-/// claims the token, or an empty string / error to pass through.
-#[derive(Debug, Serialize)]
-pub struct NodeData<'a> {
-    /// SyntaxKind as a human-readable string: `"IDENT"`, `"TEXT"`, `"STRING_DOUBLE"`, …
-    pub kind: &'a str,
-    /// Raw source text of the token (e.g. `"@if"`, `"{"`, `"\"value\""`).
-    pub text: &'a str,
-    /// SyntaxKind of the **parent** node: `"ELEMENT"`, `"ROOT"`, `"OPEN_TAG"`, …
-    pub parent_kind: &'a str,
-    /// For tokens inside a tag, the name of the attribute this token belongs to
-    /// (e.g. `"[ngClass]"`).  Empty string when not inside an attribute.
-    pub attribute_name: &'a str,
-    /// Current indentation depth at the point this token is about to be emitted.
-    pub current_indent: usize,
-    /// Spaces per indent level (only meaningful when `use_tabs` is false).
-    pub indent_size: usize,
-    /// Whether the formatter is configured to use tab characters.
-    pub use_tabs: bool,
-    /// JSON string of plugin-specific options from `config.plugin.options`.
-    /// `None` when no plugin section is present in the config.
-    pub plugin_options: Option<&'a str>,
+pub trait FormatPlugin: Send {
+    fn handle_hook(&mut self, request: &HookRequest<'_>) -> HookResponse;
 }
 
-/// What the WASM plugin tells the formatter to do for a given token.
-///
-/// If the plugin returns an empty string the formatter falls back to its
-/// built-in logic.  Otherwise it deserialises this struct and hands control
-/// to [`Formatter::emit_plugin_result`].
-#[derive(Debug, Deserialize)]
-pub struct PluginResult {
-    /// The literal text to push into the formatter output for this token.
-    pub output: String,
-    /// Signed indent adjustment applied **around** `output`:
-    ///   - negative → decrement `current_indent` *before* emitting (e.g. closing `}`)
-    ///   - positive → increment `current_indent` *after* emitting (e.g. opening `{`)
-    pub indent_delta: i32,
-    /// When `true` the formatter calls `push_newlines_with_indent(1)` before
-    /// pushing `output`, ensuring a clean newline + correct indentation prefix.
-    pub prepend_newline: bool,
-    /// When `true` the formatter ensures at least one space immediately before
-    /// `output` (idempotent — will not double-up an existing trailing space).
-    pub prepend_space: bool,
+struct WasmPluginInstance {
+    plugin: Plugin,
+    plugin_options: Option<String>,
 }
 
-// ── Plugin host ───────────────────────────────────────────────────────────────
-
-pub struct PluginManager {
-    plugin: Option<Plugin>,
-}
-
-impl PluginManager {
-    pub fn new() -> Self {
-        Self { plugin: None }
-    }
-
-    /// Returns `true` if a WASM plugin is currently loaded.
-    pub fn has_plugin(&self) -> bool {
-        self.plugin.is_some()
-    }
-
-    /// Load a compiled `.wasm` plugin from `path`.
-    /// The plugin must export a function named `format_hook`.
-    pub fn load_wasm(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+impl WasmPluginInstance {
+    fn new(path: &str, plugin_options: Option<String>) -> Result<Self, Box<dyn std::error::Error>> {
         let manifest = Manifest::new([Wasm::file(path)]);
         let plugin = Plugin::new(&manifest, [], true)?;
-        self.plugin = Some(plugin);
+        Ok(Self {
+            plugin,
+            plugin_options,
+        })
+    }
+}
+
+impl FormatPlugin for WasmPluginInstance {
+    fn handle_hook(&mut self, request: &HookRequest<'_>) -> HookResponse {
+        let request = request
+            .clone()
+            .with_plugin_options(self.plugin_options.as_deref().map(Cow::Borrowed));
+
+        let input = match serde_json::to_string(&request) {
+            Ok(input) => input,
+            Err(_) => return HookResponse::Continue,
+        };
+
+        let response: String = match self.plugin.call(HANDLE_HOOK_EXPORT, input) {
+            Ok(response) => response,
+            Err(_) => return HookResponse::Continue,
+        };
+
+        if response.trim().is_empty() {
+            return HookResponse::Continue;
+        }
+
+        serde_json::from_str(&response).unwrap_or(HookResponse::Continue)
+    }
+}
+
+#[derive(Default)]
+pub struct PluginHost {
+    plugins: Vec<Box<dyn FormatPlugin>>,
+}
+
+impl PluginHost {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.plugins.is_empty()
+    }
+
+    pub fn register(&mut self, plugin: Box<dyn FormatPlugin>) {
+        self.plugins.push(plugin);
+    }
+
+    pub fn load_wasm(
+        &mut self,
+        path: &str,
+        plugin_options: Option<String>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let plugin = WasmPluginInstance::new(path, plugin_options)?;
+        self.register(Box::new(plugin));
         Ok(())
     }
 
-    /// Offer `node_data` to the loaded plugin.
-    ///
-    /// Returns `Some(PluginResult)` when the plugin claims the token and
-    /// provides formatting instructions.  Returns `None` (pass-through) when:
-    ///   - no plugin is loaded
-    ///   - the plugin function returns an empty string
-    ///   - any serialisation / call error occurs
-    pub fn call_format_hook(&mut self, node_data: &NodeData<'_>) -> Option<PluginResult> {
-        let plugin = self.plugin.as_mut()?;
-        let input = serde_json::to_string(node_data).ok()?;
-        let response: String = plugin.call("format_hook", input).ok()?;
-        if response.is_empty() {
-            return None;
+    pub fn dispatch(&mut self, request: &HookRequest<'_>) -> Option<Replacement> {
+        for plugin in &mut self.plugins {
+            match plugin.handle_hook(request) {
+                HookResponse::Continue => {}
+                HookResponse::Replace(replacement) => return Some(replacement),
+            }
         }
-        serde_json::from_str(&response).ok()
+
+        None
     }
 }
 
-impl Default for PluginManager {
-    fn default() -> Self {
-        Self::new()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fua_plugin_api::{HookContext, LeadingSpacing};
+
+    struct PassThroughPlugin;
+
+    impl FormatPlugin for PassThroughPlugin {
+        fn handle_hook(&mut self, _request: &HookRequest<'_>) -> HookResponse {
+            HookResponse::Continue
+        }
+    }
+
+    struct ReplacingPlugin;
+
+    impl FormatPlugin for ReplacingPlugin {
+        fn handle_hook(&mut self, _request: &HookRequest<'_>) -> HookResponse {
+            HookResponse::replace(Replacement::text("handled").with_leading(LeadingSpacing::Space))
+        }
+    }
+
+    #[test]
+    fn dispatch_returns_the_first_replacement() {
+        let context = HookContext::new("ROOT", None, None, 0, 2, false);
+        let request = HookRequest::token("TEXT", "hello", context);
+
+        let mut host = PluginHost::new();
+        host.register(Box::new(PassThroughPlugin));
+        host.register(Box::new(ReplacingPlugin));
+
+        let replacement = host.dispatch(&request).expect("replacement");
+        assert_eq!(replacement.output, "handled");
+        assert_eq!(replacement.leading_spacing, LeadingSpacing::Space);
     }
 }
 
@@ -2354,7 +1856,7 @@ pub enum SyntaxKind {
     CLOSE_TAG,
     SELF_CLOSING_TAG,
     ATTRIBUTE,
-    
+
     // Catch-all for rowan
     ERROR,
 }
@@ -2386,6 +1888,821 @@ pub type SyntaxElement = rowan::SyntaxElement<HtmlLang>;
 
 ```
 
+# FILE: crates/core/src/formatter/content.rs
+```rust
+use super::FormatSession;
+use super::context::{is_after_open_tag, is_before_close_tag, is_compact_element};
+use crate::syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
+
+impl FormatSession {
+    pub(super) fn format_content_token(
+        &mut self,
+        parent: &SyntaxNode,
+        element: &SyntaxElement,
+        token: &SyntaxToken,
+        inline_mode: bool,
+    ) {
+        if self.try_handle_token(parent, token, None) {
+            return;
+        }
+
+        match token.kind() {
+            SyntaxKind::WHITESPACE => {
+                self.format_content_whitespace(element, token.text(), inline_mode)
+            }
+            SyntaxKind::COMMENT => self.format_comment(token.text()),
+            SyntaxKind::IDENT => self.format_ident(parent, element, token.text(), inline_mode),
+            SyntaxKind::TEXT => self.format_text(parent, element, token.text(), inline_mode),
+            _ => self.output.push_str(token.text()),
+        }
+    }
+
+    fn format_content_whitespace(
+        &mut self,
+        element: &SyntaxElement,
+        text: &str,
+        inline_mode: bool,
+    ) {
+        let newline_count = text.matches('\n').count();
+        let next = element.next_sibling_or_token();
+
+        if self.should_omit_content_whitespace(next.as_ref()) {
+            self.preserve_blank_line_gap(newline_count);
+            return;
+        }
+
+        if self.should_wrap_content_whitespace(element, text, inline_mode) {
+            self.push_content_break(newline_count);
+            return;
+        }
+
+        if inline_mode {
+            self.write_inline_content_spacing(element);
+            return;
+        }
+
+        self.ensure_space();
+    }
+
+    fn should_omit_content_whitespace(&self, next: Option<&SyntaxElement>) -> bool {
+        next.is_some_and(|sibling| {
+            sibling.kind() == SyntaxKind::CLOSE_TAG
+                || sibling.as_node().is_some_and(|node| {
+                    node.kind() == SyntaxKind::ELEMENT
+                        && !is_compact_element(node, self.config.inline_short_elements_max_len)
+                })
+        })
+    }
+
+    fn should_wrap_content_whitespace(
+        &self,
+        element: &SyntaxElement,
+        text: &str,
+        inline_mode: bool,
+    ) -> bool {
+        (text.contains('\n') || (is_after_open_tag(element) && self.config.wrap_content))
+            && !inline_mode
+    }
+
+    fn preserve_blank_line_gap(&mut self, newline_count: usize) {
+        if newline_count > 1 {
+            self.push_newlines_with_indent(2);
+        }
+    }
+
+    fn push_content_break(&mut self, newline_count: usize) {
+        let break_count = if newline_count > 1 { 2 } else { 1 };
+        self.push_newlines_with_indent(break_count);
+    }
+
+    fn write_inline_content_spacing(&mut self, element: &SyntaxElement) {
+        if !is_after_open_tag(element) && !is_before_close_tag(element) {
+            self.ensure_space();
+        }
+    }
+
+    fn format_comment(&mut self, text: &str) {
+        self.push_newlines_with_indent(1);
+        self.output.push_str(text);
+    }
+
+    fn format_ident(
+        &mut self,
+        parent: &SyntaxNode,
+        element: &SyntaxElement,
+        text: &str,
+        inline_mode: bool,
+    ) {
+        if self.should_wrap_text_after_open_tag(parent, element, inline_mode) {
+            self.push_newlines_with_indent(1);
+        }
+
+        self.output.push_str(text);
+    }
+
+    fn format_text(
+        &mut self,
+        parent: &SyntaxNode,
+        element: &SyntaxElement,
+        text: &str,
+        inline_mode: bool,
+    ) {
+        let mut collapsed = if inline_mode {
+            collapse_inline_text(
+                text,
+                is_after_open_tag(element),
+                is_before_close_tag(element),
+            )
+        } else {
+            text.replace("  ", " ")
+        };
+
+        if self.should_wrap_text_after_open_tag(parent, element, inline_mode)
+            && !collapsed.trim().is_empty()
+        {
+            self.output.push('\n');
+            self.push_current_indent();
+            collapsed = collapsed.trim_start().to_string();
+        }
+
+        self.output.push_str(&collapsed);
+    }
+
+    fn should_wrap_text_after_open_tag(
+        &self,
+        parent: &SyntaxNode,
+        element: &SyntaxElement,
+        inline_mode: bool,
+    ) -> bool {
+        parent.kind() == SyntaxKind::ELEMENT
+            && is_after_open_tag(element)
+            && self.config.wrap_content
+            && !inline_mode
+    }
+
+    pub(super) fn format_double_quoted_string(&mut self, text: &str) {
+        if self.config.single_quotes && text.len() >= 2 {
+            let inner = &text[1..text.len() - 1];
+            let escaped = inner.replace('\'', "&apos;");
+            self.output.push('\'');
+            self.output.push_str(&escaped);
+            self.output.push('\'');
+        } else {
+            self.output.push_str(text);
+        }
+    }
+
+    pub(super) fn format_single_quoted_string(&mut self, text: &str) {
+        if !self.config.single_quotes && text.len() >= 2 {
+            let inner = &text[1..text.len() - 1];
+            let escaped = inner.replace('"', "&quot;");
+            self.output.push('"');
+            self.output.push_str(&escaped);
+            self.output.push('"');
+        } else {
+            self.output.push_str(text);
+        }
+    }
+}
+
+fn collapse_inline_text(text: &str, trim_start: bool, trim_end: bool) -> String {
+    let mut collapsed = text.replace('\r', "").replace(['\n', '\t'], " ");
+
+    while collapsed.contains("  ") {
+        collapsed = collapsed.replace("  ", " ");
+    }
+
+    if trim_start {
+        collapsed = collapsed.trim_start().to_string();
+    }
+
+    if trim_end {
+        collapsed = collapsed.trim_end().to_string();
+    }
+
+    collapsed
+}
+
+```
+
+# FILE: crates/core/src/formatter/context.rs
+```rust
+use crate::syntax::{SyntaxElement, SyntaxKind, SyntaxNode};
+use rowan::NodeOrToken;
+
+pub(super) const ROOT_PARENT_KIND: &str = "NONE";
+
+pub(super) fn node_tag_name(node: &SyntaxNode) -> Option<String> {
+    match node.kind() {
+        SyntaxKind::ELEMENT => element_tag_name(node),
+        SyntaxKind::OPEN_TAG | SyntaxKind::CLOSE_TAG | SyntaxKind::SELF_CLOSING_TAG => {
+            tag_node_name(node)
+        }
+        _ => None,
+    }
+}
+
+pub(super) fn syntax_kind_label(kind: SyntaxKind) -> &'static str {
+    match kind {
+        SyntaxKind::WHITESPACE => "WHITESPACE",
+        SyntaxKind::COMMENT => "COMMENT",
+        SyntaxKind::OPEN_ANGLE => "OPEN_ANGLE",
+        SyntaxKind::CLOSE_ANGLE => "CLOSE_ANGLE",
+        SyntaxKind::OPEN_ANGLE_SLASH => "OPEN_ANGLE_SLASH",
+        SyntaxKind::SLASH_CLOSE_ANGLE => "SLASH_CLOSE_ANGLE",
+        SyntaxKind::EQUALS => "EQUALS",
+        SyntaxKind::IDENT => "IDENT",
+        SyntaxKind::STRING_DOUBLE => "STRING_DOUBLE",
+        SyntaxKind::STRING_SINGLE => "STRING_SINGLE",
+        SyntaxKind::TEXT => "TEXT",
+        SyntaxKind::UNCLOSED_QUOTE => "UNCLOSED_QUOTE",
+        SyntaxKind::ROOT => "ROOT",
+        SyntaxKind::ELEMENT => "ELEMENT",
+        SyntaxKind::OPEN_TAG => "OPEN_TAG",
+        SyntaxKind::CLOSE_TAG => "CLOSE_TAG",
+        SyntaxKind::SELF_CLOSING_TAG => "SELF_CLOSING_TAG",
+        SyntaxKind::ATTRIBUTE => "ATTRIBUTE",
+        SyntaxKind::ERROR => "ERROR",
+    }
+}
+
+pub(super) fn can_inline_element(node: &SyntaxNode) -> bool {
+    node_tag_name(node)
+        .as_deref()
+        .map(|tag_name| !is_block_element(tag_name))
+        .unwrap_or(false)
+}
+
+pub(super) fn is_compact_element(node: &SyntaxNode, max_len: usize) -> bool {
+    let has_complex_child = node.children_with_tokens().any(|element| {
+        element.kind() == SyntaxKind::ELEMENT || element.kind() == SyntaxKind::COMMENT
+    });
+    if has_complex_child {
+        return false;
+    }
+
+    let total_len: usize = node
+        .descendants_with_tokens()
+        .filter_map(|element| match element {
+            NodeOrToken::Token(token) if token.kind() != SyntaxKind::WHITESPACE => {
+                Some(token.text().len())
+            }
+            _ => None,
+        })
+        .sum();
+
+    total_len <= max_len
+}
+
+pub(super) fn is_after_open_tag(element: &SyntaxElement) -> bool {
+    previous_non_whitespace(element)
+        .as_ref()
+        .is_some_and(|sibling| sibling.kind() == SyntaxKind::OPEN_TAG)
+}
+
+pub(super) fn is_before_close_tag(element: &SyntaxElement) -> bool {
+    next_non_whitespace(element)
+        .as_ref()
+        .is_some_and(|sibling| sibling.kind() == SyntaxKind::CLOSE_TAG)
+}
+
+pub(super) fn previous_non_whitespace(element: &SyntaxElement) -> Option<SyntaxElement> {
+    let mut current = element.prev_sibling_or_token();
+    while let Some(sibling) = current.clone() {
+        if sibling.kind() == SyntaxKind::WHITESPACE {
+            current = sibling.prev_sibling_or_token();
+        } else {
+            break;
+        }
+    }
+    current
+}
+
+pub(super) fn next_non_whitespace(element: &SyntaxElement) -> Option<SyntaxElement> {
+    let mut current = element.next_sibling_or_token();
+    while let Some(sibling) = current.clone() {
+        if sibling.kind() == SyntaxKind::WHITESPACE {
+            current = sibling.next_sibling_or_token();
+        } else {
+            break;
+        }
+    }
+    current
+}
+
+pub(super) fn token_text(element: &SyntaxElement) -> Option<&str> {
+    match element {
+        NodeOrToken::Node(_) => None,
+        NodeOrToken::Token(token) => Some(token.text()),
+    }
+}
+
+fn element_tag_name(node: &SyntaxNode) -> Option<String> {
+    for element in node.children_with_tokens() {
+        if let NodeOrToken::Node(tag) = element
+            && matches!(
+                tag.kind(),
+                SyntaxKind::OPEN_TAG | SyntaxKind::SELF_CLOSING_TAG
+            )
+        {
+            return tag_node_name(&tag);
+        }
+    }
+
+    None
+}
+
+fn tag_node_name(node: &SyntaxNode) -> Option<String> {
+    node.children_with_tokens()
+        .find_map(|element| match element {
+            NodeOrToken::Token(token) if token.kind() == SyntaxKind::IDENT => {
+                Some(token.text().to_string())
+            }
+            _ => None,
+        })
+}
+
+pub(super) fn is_block_element(tag_name: &str) -> bool {
+    !matches!(
+        tag_name,
+        "a" | "abbr"
+            | "b"
+            | "code"
+            | "em"
+            | "i"
+            | "img"
+            | "input"
+            | "label"
+            | "small"
+            | "span"
+            | "strong"
+            | "sub"
+            | "sup"
+            | "textarea"
+    )
+}
+
+```
+
+# FILE: crates/core/src/formatter/hooks.rs
+```rust
+use super::FormatSession;
+use super::context::{ROOT_PARENT_KIND, node_tag_name, syntax_kind_label, token_text};
+use crate::syntax::{SyntaxNode, SyntaxToken};
+use fua_plugin_api::{HookContext, HookRequest, LeadingSpacing, NodePhase, Replacement};
+
+impl FormatSession {
+    pub(super) fn try_handle_node(&mut self, node: &SyntaxNode, phase: NodePhase) -> bool {
+        if self.plugin_host.is_empty() {
+            return false;
+        }
+
+        let tag_name = node_tag_name(node);
+        let text = node.to_string();
+        let request = HookRequest::node(
+            phase,
+            syntax_kind_label(node.kind()),
+            &text,
+            tag_name.as_deref(),
+            self.build_node_context(node, tag_name.as_deref()),
+        );
+
+        if let Some(replacement) = self.plugin_host.dispatch(&request) {
+            self.write_replacement(replacement);
+            return true;
+        }
+
+        false
+    }
+
+    pub(super) fn try_handle_token(
+        &mut self,
+        parent: &SyntaxNode,
+        token: &SyntaxToken,
+        attribute_name: Option<&str>,
+    ) -> bool {
+        if self.plugin_host.is_empty() {
+            return false;
+        }
+
+        let tag_name = node_tag_name(parent);
+        let previous = token.prev_sibling_or_token();
+        let next = token.next_sibling_or_token();
+        let request = HookRequest::token(
+            syntax_kind_label(token.kind()),
+            token.text(),
+            HookContext::new(
+                syntax_kind_label(parent.kind()),
+                tag_name.as_deref(),
+                attribute_name,
+                self.current_indent,
+                self.config.indent_size,
+                self.config.use_tabs,
+            )
+            .with_neighbors(
+                previous
+                    .as_ref()
+                    .map(|element| syntax_kind_label(element.kind())),
+                previous.as_ref().and_then(token_text),
+                next.as_ref()
+                    .map(|element| syntax_kind_label(element.kind())),
+                next.as_ref().and_then(token_text),
+            ),
+        );
+
+        if let Some(replacement) = self.plugin_host.dispatch(&request) {
+            self.write_replacement(replacement);
+            return true;
+        }
+
+        false
+    }
+
+    fn build_node_context<'a>(
+        &self,
+        node: &SyntaxNode,
+        tag_name: Option<&'a str>,
+    ) -> HookContext<'a> {
+        let parent_kind = node
+            .parent()
+            .map(|parent| syntax_kind_label(parent.kind()))
+            .unwrap_or(ROOT_PARENT_KIND);
+
+        HookContext::new(
+            parent_kind,
+            tag_name,
+            None,
+            self.current_indent,
+            self.config.indent_size,
+            self.config.use_tabs,
+        )
+    }
+
+    fn write_replacement(&mut self, replacement: Replacement) {
+        self.adjust_indent(replacement.indent_before);
+        self.apply_leading_spacing(replacement.leading_spacing);
+        self.output.push_str(&replacement.output);
+        self.adjust_indent(replacement.indent_after);
+    }
+
+    fn apply_leading_spacing(&mut self, spacing: LeadingSpacing) {
+        match spacing {
+            LeadingSpacing::None => {}
+            LeadingSpacing::Space => self.ensure_space(),
+            LeadingSpacing::LineBreak => self.push_newlines_with_indent(1),
+            LeadingSpacing::BlankLine => self.push_newlines_with_indent(2),
+        }
+    }
+}
+
+```
+
+# FILE: crates/core/src/formatter/output.rs
+```rust
+use super::FormatSession;
+
+impl FormatSession {
+    pub(super) fn finish(self) -> String {
+        self.output
+    }
+
+    pub(super) fn adjust_indent(&mut self, delta: i32) {
+        if delta < 0 {
+            self.current_indent = self.current_indent.saturating_sub((-delta) as usize);
+        } else {
+            self.current_indent += delta as usize;
+        }
+    }
+
+    pub(super) fn push_current_indent(&mut self) {
+        self.push_indent(self.current_indent);
+    }
+
+    fn push_indent(&mut self, depth: usize) {
+        if self.config.use_tabs {
+            self.output.push_str(&"\t".repeat(depth));
+        } else {
+            self.output
+                .push_str(&" ".repeat(depth * self.config.indent_size));
+        }
+    }
+
+    pub(super) fn ensure_space(&mut self) {
+        if self
+            .output
+            .chars()
+            .next_back()
+            .is_some_and(|ch| ch == ' ' || ch == '\t' || ch == '\n')
+        {
+            return;
+        }
+
+        self.output.push(' ');
+    }
+
+    pub(super) fn push_single_indent_unit(&mut self) {
+        self.push_indent(1);
+    }
+
+    pub(super) fn push_newlines_with_indent(&mut self, count: usize) {
+        trim_trailing_horizontal_whitespace(&mut self.output);
+
+        let trailing_newlines = self
+            .output
+            .chars()
+            .rev()
+            .take_while(|ch| *ch == '\n')
+            .count();
+        for _ in trailing_newlines..count {
+            self.output.push('\n');
+        }
+
+        self.push_current_indent();
+    }
+}
+
+fn trim_trailing_horizontal_whitespace(output: &mut String) {
+    let mut trim_len = output.len();
+    for ch in output.chars().rev() {
+        if ch == ' ' || ch == '\t' {
+            trim_len -= ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    output.truncate(trim_len);
+}
+
+```
+
+# FILE: crates/core/src/formatter/tags.rs
+```rust
+use super::FormatSession;
+use crate::syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
+use rowan::NodeOrToken;
+
+#[derive(Default)]
+struct TagState {
+    saw_tag_name: bool,
+    current_attribute_name: Option<String>,
+}
+
+impl TagState {
+    fn attribute_name(&self) -> Option<&str> {
+        self.current_attribute_name.as_deref()
+    }
+
+    fn observe_ident(&mut self, node_kind: SyntaxKind, text: &str) {
+        if !matches!(
+            node_kind,
+            SyntaxKind::OPEN_TAG | SyntaxKind::SELF_CLOSING_TAG
+        ) {
+            return;
+        }
+
+        if self.saw_tag_name {
+            self.current_attribute_name = Some(text.to_string());
+        } else {
+            self.saw_tag_name = true;
+        }
+    }
+}
+
+impl FormatSession {
+    pub(super) fn format_open_tag(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        self.format_tag(node, inline_mode);
+    }
+
+    pub(super) fn format_close_tag(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        self.format_tag(node, inline_mode);
+    }
+
+    pub(super) fn format_self_closing_tag(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        self.format_tag(node, inline_mode);
+    }
+
+    fn format_tag(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        let mut state = TagState::default();
+
+        for element in node.children_with_tokens() {
+            let NodeOrToken::Token(token) = &element else {
+                continue;
+            };
+
+            self.format_tag_token(node, &element, token, inline_mode, &mut state);
+        }
+    }
+
+    fn format_tag_token(
+        &mut self,
+        node: &SyntaxNode,
+        element: &SyntaxElement,
+        token: &SyntaxToken,
+        inline_mode: bool,
+        state: &mut TagState,
+    ) {
+        if self.try_handle_token(node, token, state.attribute_name()) {
+            return;
+        }
+
+        match token.kind() {
+            SyntaxKind::WHITESPACE => self.format_attribute_spacing(element, inline_mode),
+            SyntaxKind::IDENT => {
+                state.observe_ident(node.kind(), token.text());
+                self.output.push_str(token.text());
+            }
+            SyntaxKind::STRING_DOUBLE => self.format_double_quoted_string(token.text()),
+            SyntaxKind::STRING_SINGLE => self.format_single_quoted_string(token.text()),
+            SyntaxKind::CLOSE_ANGLE | SyntaxKind::SLASH_CLOSE_ANGLE => {
+                self.format_tag_closing_bracket(node.kind(), element, token.text(), inline_mode)
+            }
+            _ => self.output.push_str(token.text()),
+        }
+    }
+
+    fn format_attribute_spacing(&mut self, element: &SyntaxElement, inline_mode: bool) {
+        let next = element.next_sibling_or_token();
+        let next_is_bracket = next.as_ref().is_some_and(|sibling| {
+            matches!(
+                sibling.kind(),
+                SyntaxKind::CLOSE_ANGLE | SyntaxKind::SLASH_CLOSE_ANGLE
+            )
+        });
+
+        if next_is_bracket {
+            if self.config.bracket_same_line || inline_mode {
+                if next
+                    .as_ref()
+                    .is_some_and(|sibling| sibling.kind() == SyntaxKind::SLASH_CLOSE_ANGLE)
+                {
+                    self.ensure_space();
+                }
+                return;
+            }
+
+            if self.config.wrap_attributes {
+                self.push_newlines_with_indent(1);
+                return;
+            }
+        }
+
+        if self.config.wrap_attributes {
+            if inline_mode {
+                self.ensure_space();
+            } else {
+                self.push_newlines_with_indent(1);
+                self.push_single_indent_unit();
+            }
+            return;
+        }
+
+        self.ensure_space();
+    }
+
+    fn format_tag_closing_bracket(
+        &mut self,
+        node_kind: SyntaxKind,
+        element: &SyntaxElement,
+        text: &str,
+        inline_mode: bool,
+    ) {
+        let prev = element.prev_sibling_or_token();
+        let prev_is_whitespace = prev
+            .as_ref()
+            .is_some_and(|sibling| sibling.kind() == SyntaxKind::WHITESPACE);
+
+        if matches!(
+            node_kind,
+            SyntaxKind::OPEN_TAG | SyntaxKind::SELF_CLOSING_TAG
+        ) && !self.config.bracket_same_line
+            && self.config.wrap_attributes
+            && !prev_is_whitespace
+            && !inline_mode
+        {
+            self.push_newlines_with_indent(1);
+        }
+
+        self.output.push_str(text);
+    }
+}
+
+```
+
+# FILE: crates/core/src/formatter/traversal.rs
+```rust
+use super::FormatSession;
+use super::context::{can_inline_element, is_block_element, is_compact_element, node_tag_name};
+use crate::syntax::{SyntaxKind, SyntaxNode};
+use fua_plugin_api::NodePhase;
+use rowan::NodeOrToken;
+
+impl FormatSession {
+    pub(super) fn format(mut self, root: &SyntaxNode) -> String {
+        self.format_node(root, false);
+        self.finish()
+    }
+
+    fn format_node(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        if self.try_handle_node(node, NodePhase::Enter) {
+            return;
+        }
+
+        match node.kind() {
+            SyntaxKind::ROOT => self.format_children(node, inline_mode),
+            SyntaxKind::ELEMENT => self.format_element(node, inline_mode),
+            SyntaxKind::OPEN_TAG => self.format_open_tag(node, inline_mode),
+            SyntaxKind::CLOSE_TAG => self.format_close_tag(node, inline_mode),
+            SyntaxKind::SELF_CLOSING_TAG => self.format_self_closing_tag(node, inline_mode),
+            _ => self.format_children(node, inline_mode),
+        }
+
+        self.try_handle_node(node, NodePhase::Exit);
+    }
+
+    fn format_children(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        for element in node.children_with_tokens() {
+            match element {
+                NodeOrToken::Node(child) => self.format_nested_node(&child, inline_mode),
+                NodeOrToken::Token(ref token) => {
+                    self.format_content_token(node, &element, token, inline_mode)
+                }
+            }
+        }
+    }
+
+    fn format_element(&mut self, node: &SyntaxNode, inherited_inline: bool) {
+        let inline_mode = self.inline_mode_for(node, inherited_inline);
+        let is_block = self.is_block_element_node(node);
+        let starting_indent = self.current_indent;
+
+        for element in node.children_with_tokens() {
+            match element {
+                NodeOrToken::Node(child) => match child.kind() {
+                    SyntaxKind::OPEN_TAG => {
+                        self.format_open_tag(&child, inline_mode);
+                        if is_block && !inline_mode {
+                            self.current_indent += 1;
+                        }
+                    }
+                    SyntaxKind::CLOSE_TAG => {
+                        if is_block && !inline_mode {
+                            self.current_indent = self.current_indent.saturating_sub(1);
+                            self.push_newlines_with_indent(1);
+                        }
+                        self.format_close_tag(&child, inline_mode);
+                    }
+                    SyntaxKind::SELF_CLOSING_TAG => {
+                        self.format_self_closing_tag(&child, inline_mode)
+                    }
+                    _ => self.format_nested_node(&child, inline_mode),
+                },
+                NodeOrToken::Token(ref token) => {
+                    self.format_content_token(node, &element, token, inline_mode)
+                }
+            }
+        }
+
+        self.current_indent = starting_indent;
+    }
+
+    fn format_nested_node(&mut self, node: &SyntaxNode, inline_mode: bool) {
+        let child_inline = self.inline_mode_for(node, inline_mode);
+
+        if self.should_break_before_child(node, inline_mode, child_inline) {
+            self.push_newlines_with_indent(1);
+        }
+
+        self.format_node(node, child_inline);
+    }
+
+    fn inline_mode_for(&self, node: &SyntaxNode, inherited_inline: bool) -> bool {
+        inherited_inline
+            || (can_inline_element(node)
+                && is_compact_element(node, self.config.inline_short_elements_max_len))
+    }
+
+    fn is_block_element_node(&self, node: &SyntaxNode) -> bool {
+        node_tag_name(node)
+            .as_deref()
+            .map(is_block_element)
+            .unwrap_or(true)
+    }
+
+    fn should_break_before_child(
+        &self,
+        node: &SyntaxNode,
+        inline_mode: bool,
+        child_inline: bool,
+    ) -> bool {
+        matches!(node.kind(), SyntaxKind::ELEMENT)
+            && self.is_block_element_node(node)
+            && !inline_mode
+            && !child_inline
+    }
+}
+
+```
+
 # FILE: crates/fua-plugin-angular/Cargo.toml
 ```toml
 [package]
@@ -2395,373 +2712,158 @@ edition = "2024"
 
 # cdylib produces the .wasm binary when compiled with --target wasm32-wasip1
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-extism-pdk = "1"
 serde = { workspace = true }
 serde_json = { workspace = true }
+fua-plugin-api = { path = "../fua-plugin-api" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+extism-pdk = "1"
 
 ```
 
-# FILE: crates/fua-plugin-angular/src/lib.rs
+# FILE: crates/fua-plugin-angular/src/attributes.rs
 ```rust
-/// fua-plugin-angular — Extism guest plugin
-///
-/// Handles Angular 17+ template specifics:
-///   • Control-flow syntax: @if / @else if / @else / @for / @switch / …
-///   • Condition wrapping: long `||` / `&&` chains in Angular bindings are
-///     split onto individual lines.  The `||` / `&&` operator is aligned to
-///     the same visual column as the start of the first condition on the
-///     key line.  Extra spaces after the key `:` are added so the continuation
-///     tab stops align cleanly.
-///
-/// Example output (indent_size=4, use_tabs=true):
-///   'border-accent':   this.hasNameChanges·
-///                   || this.hasDescriptionChanges·
-///                   || this.hasImageChanges,
-///
-/// Build to WASM:
-///   cargo build -p fua-plugin-angular --target wasm32-wasip1 --release
-use extism_pdk::*;
-use serde::{Deserialize, Serialize};
+use crate::context::{is_class_attr, is_ngclass_attr};
+use crate::expressions::{
+    count_top_level_ops, is_wrappable_condition_expr, split_on_top_level_ops,
+    split_top_level_commas, split_trailing_punctuation, unwrap_negated_group,
+};
+use serde_json::Value;
 
-// ── Shared data contract (mirrors fua-core/src/plugins.rs) ───────────────────
-
-#[derive(Deserialize)]
-struct NodeData {
-    kind: String,
-    text: String,
-    parent_kind: String,
-    attribute_name: String,
-    #[allow(dead_code)]
+pub(crate) fn process_attribute_string(
+    text: &str,
+    attr_name: &str,
+    options: &Value,
     current_indent: usize,
     indent_size: usize,
     use_tabs: bool,
-    plugin_options: Option<String>,
-}
-
-#[derive(Serialize)]
-struct PluginResult {
-    output: String,
-    indent_delta: i32,
-    prepend_newline: bool,
-    prepend_space: bool,
-}
-
-impl PluginResult {
-    fn new(
-        output: impl Into<String>,
-        indent_delta: i32,
-        prepend_newline: bool,
-        prepend_space: bool,
-    ) -> Self {
-        Self {
-            output: output.into(),
-            indent_delta,
-            prepend_newline,
-            prepend_space,
-        }
-    }
-
-    fn just(output: impl Into<String>) -> Self {
-        Self::new(output, 0, false, false)
-    }
-}
-
-// ── Angular control-flow helpers ──────────────────────────────────────────────
-
-fn is_content_context(parent_kind: &str) -> bool {
-    parent_kind == "ELEMENT" || parent_kind == "ROOT"
-}
-
-fn is_block_opener(text: &str) -> bool {
-    matches!(
-        text,
-        "@if" | "@for" | "@switch" | "@case" | "@default" | "@empty"
-    )
-}
-
-fn is_else_like(text: &str) -> bool {
-    text == "@else" || text.starts_with("@else ")
-}
-
-// ── Angular binding helpers ───────────────────────────────────────────────────
-
-fn is_angular_binding(attr_name: &str) -> bool {
-    let n = attr_name.trim();
-    (n.starts_with('[') && n.ends_with(']'))
-        || (n.starts_with('(') && n.ends_with(')'))
-        || n.starts_with("*ng")
-        || n.starts_with("*cdk")
-}
-
-fn is_ngclass_attr(attr_name: &str) -> bool {
-    let n = attr_name.trim();
-    n.eq_ignore_ascii_case("[ngclass]") || n.eq_ignore_ascii_case("ngclass")
-}
-
-fn is_class_attr(attr_name: &str) -> bool {
-    attr_name.trim().eq_ignore_ascii_case("class")
-}
-
-// ── Operator helpers ──────────────────────────────────────────────────────────
-
-/// Count top-level `||` and `&&` operators in `s` (not inside brackets or strings).
-fn count_top_level_ops(s: &str) -> usize {
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-    let mut depth: i32 = 0;
-    let mut count = 0;
-    let mut i = 0;
-
-    while i < len {
-        match bytes[i] {
-            b'(' | b'[' | b'{' => { depth += 1; i += 1; }
-            b')' | b']' | b'}' => { depth = depth.saturating_sub(1); i += 1; }
-            b'"' | b'\'' | b'`' => {
-                let q = bytes[i];
-                i += 1;
-                while i < len {
-                    if bytes[i] == b'\\' { i += 2; continue; }
-                    if bytes[i] == q { i += 1; break; }
-                    i += 1;
-                }
-            }
-            b'|' if depth == 0 && i + 1 < len && bytes[i + 1] == b'|' => { count += 1; i += 2; }
-            b'&' if depth == 0 && i + 1 < len && bytes[i + 1] == b'&' => { count += 1; i += 2; }
-            _ => { i += 1; }
-        }
-    }
-    count
-}
-
-/// Split `s` on top-level `||` / `&&`, returning `(operator, trimmed_expression)` pairs.
-/// The first entry always has an empty operator string.
-fn split_on_top_level_ops(s: &str) -> Vec<(String, String)> {
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-    let mut depth: i32 = 0;
-    let mut parts: Vec<(String, String)> = Vec::new();
-    let mut current = String::new();
-    let mut current_op = String::new();
-    let mut i = 0;
-
-    while i < len {
-        match bytes[i] {
-            b'(' | b'[' | b'{' => { depth += 1; current.push(bytes[i] as char); i += 1; }
-            b')' | b']' | b'}' => {
-                depth = depth.saturating_sub(1);
-                current.push(bytes[i] as char);
-                i += 1;
-            }
-            b'"' | b'\'' | b'`' => {
-                let q = bytes[i];
-                current.push(q as char);
-                i += 1;
-                while i < len {
-                    if bytes[i] == b'\\' {
-                        current.push('\\');
-                        i += 1;
-                        if i < len { current.push(bytes[i] as char); i += 1; }
-                    } else if bytes[i] == q {
-                        current.push(q as char);
-                        i += 1;
-                        break;
-                    } else {
-                        current.push(bytes[i] as char);
-                        i += 1;
-                    }
-                }
-            }
-            b'|' if depth == 0 && i + 1 < len && bytes[i + 1] == b'|' => {
-                parts.push((current_op.clone(), current.trim().to_string()));
-                current_op = "||".to_string();
-                current = String::new();
-                i += 2;
-                while i < len && (bytes[i] == b' ' || bytes[i] == b'\t') { i += 1; }
-            }
-            b'&' if depth == 0 && i + 1 < len && bytes[i + 1] == b'&' => {
-                parts.push((current_op.clone(), current.trim().to_string()));
-                current_op = "&&".to_string();
-                current = String::new();
-                i += 2;
-                while i < len && (bytes[i] == b' ' || bytes[i] == b'\t') { i += 1; }
-            }
-            _ => { current.push(bytes[i] as char); i += 1; }
-        }
-    }
-
-    let last = current.trim().to_string();
-    if !last.is_empty() || !current_op.is_empty() {
-        parts.push((current_op, last));
-    }
-    parts
-}
-
-fn split_trailing_punctuation(s: &str) -> (String, String) {
-    let trimmed = s.trim_end();
-    if let Some(last) = trimmed.chars().last() {
-        if matches!(last, ',' | ';') {
-            let body = trimmed[..trimmed.len() - last.len_utf8()].trim_end().to_string();
-            return (body, last.to_string());
-        }
-    }
-    (trimmed.to_string(), String::new())
-}
-
-fn unwrap_negated_group(s: &str) -> Option<&str> {
-    let trimmed = s.trim();
-    if !trimmed.starts_with("!(") || !trimmed.ends_with(')') {
-        return None;
-    }
-    let inner = &trimmed[2..trimmed.len() - 1];
-    if count_top_level_ops(inner) == 0 {
-        return None;
-    }
-    Some(inner.trim())
-}
-
-fn is_wrappable_condition_expr(s: &str, min_ops: usize) -> bool {
-    let t = s.trim();
-    if count_top_level_ops(t) >= min_ops {
-        return true;
-    }
-    if unwrap_negated_group(t).is_some() {
-        return true;
-    }
-    false
-}
-
-fn split_top_level_commas(s: &str) -> Vec<String> {
-    let bytes = s.as_bytes();
-    let mut depth: i32 = 0;
-    let mut in_quote: Option<u8> = None;
-    let mut out: Vec<String> = Vec::new();
-    let mut cur = String::new();
-    let mut i = 0usize;
-    while i < bytes.len() {
-        match in_quote {
-            Some(q) => {
-                cur.push(bytes[i] as char);
-                if bytes[i] == b'\\' {
-                    i += 1;
-                    if i < bytes.len() {
-                        cur.push(bytes[i] as char);
-                    }
-                } else if bytes[i] == q {
-                    in_quote = None;
-                }
-            }
-            None => match bytes[i] {
-                b'"' | b'\'' | b'`' => {
-                    in_quote = Some(bytes[i]);
-                    cur.push(bytes[i] as char);
-                }
-                b'(' | b'[' | b'{' => {
-                    depth += 1;
-                    cur.push(bytes[i] as char);
-                }
-                b')' | b']' | b'}' => {
-                    depth = depth.saturating_sub(1);
-                    cur.push(bytes[i] as char);
-                }
-                b',' if depth == 0 => {
-                    let part = cur.trim();
-                    if !part.is_empty() {
-                        out.push(part.to_string());
-                    }
-                    cur.clear();
-                }
-                _ => cur.push(bytes[i] as char),
-            },
-        }
-        i += 1;
-    }
-    let last = cur.trim();
-    if !last.is_empty() {
-        out.push(last.to_string());
-    }
-    out
-}
-
-fn leading_ws_of_line(s: &str) -> &str {
-    let ws_len = s
-        .bytes()
-        .take_while(|&b| b == b'\t' || b == b' ')
-        .count();
-    &s[..ws_len]
-}
-
-fn split_top_level_ternary(s: &str) -> Option<(String, String, String)> {
-    let bytes = s.as_bytes();
-    let mut depth: i32 = 0;
-    let mut in_quote: Option<u8> = None;
-    let mut q_idx: Option<usize> = None;
-    let mut colon_idx: Option<usize> = None;
-
-    let mut i = 0usize;
-    while i < bytes.len() {
-        match in_quote {
-            Some(q) => {
-                if bytes[i] == b'\\' {
-                    i += 2;
-                    continue;
-                }
-                if bytes[i] == q {
-                    in_quote = None;
-                }
-                i += 1;
-                continue;
-            }
-            None => match bytes[i] {
-                b'"' | b'\'' | b'`' => {
-                    in_quote = Some(bytes[i]);
-                    i += 1;
-                    continue;
-                }
-                b'(' | b'[' | b'{' => {
-                    depth += 1;
-                    i += 1;
-                    continue;
-                }
-                b')' | b']' | b'}' => {
-                    depth = depth.saturating_sub(1);
-                    i += 1;
-                    continue;
-                }
-                b'?' if depth == 0 && q_idx.is_none() => {
-                    q_idx = Some(i);
-                    i += 1;
-                    continue;
-                }
-                b':' if depth == 0 && q_idx.is_some() => {
-                    // Keep updating; we want the last top-level ':' for robustness.
-                    colon_idx = Some(i);
-                    i += 1;
-                    continue;
-                }
-                _ => {
-                    i += 1;
-                    continue;
-                }
-            },
-        }
-    }
-
-    let q = q_idx?;
-    let c = colon_idx?;
-    if q >= c {
+) -> Option<String> {
+    if text.len() < 2 {
         return None;
     }
 
-    let cond = s[..q].trim().to_string();
-    let then_expr = s[q + 1..c].trim().to_string();
-    let else_expr = s[c + 1..].trim().to_string();
-    if cond.is_empty() || then_expr.is_empty() || else_expr.is_empty() {
+    let (quote, inner) = if text.starts_with('"') && text.ends_with('"') {
+        ('"', &text[1..text.len() - 1])
+    } else if text.starts_with('\'') && text.ends_with('\'') {
+        ('\'', &text[1..text.len() - 1])
+    } else {
+        return None;
+    };
+
+    if inner.contains('\n')
+        && attr_name.trim().starts_with('[')
+        && attr_name.trim().ends_with(']')
+        && !is_ngclass_attr(attr_name)
+        && !inner.contains('{')
+        && !inner.contains('?')
+    {
+        let compact = inner.split_whitespace().collect::<Vec<_>>().join(" ");
+        return Some(format!("{quote}{compact}{quote}"));
+    }
+
+    let class_wrap_tokens_min = options
+        .get("class_wrap_tokens_min")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .unwrap_or(usize::MAX);
+    if is_class_attr(attr_name) {
+        if let Some(wrapped) = format_class_tokens(
+            inner,
+            class_wrap_tokens_min,
+            current_indent,
+            use_tabs,
+            indent_size,
+        ) {
+            return Some(format!("{quote}{wrapped}{quote}"));
+        }
+    }
+
+    let ngclass_wrap_entries_min = options
+        .get("ngclass_wrap_entries_min")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .unwrap_or(usize::MAX);
+    let force_wrap_ngclass = is_ngclass_attr(attr_name)
+        && split_top_level_commas(
+            inner
+                .trim()
+                .trim_start_matches('{')
+                .trim_end_matches('}')
+                .trim(),
+        )
+        .len()
+            >= ngclass_wrap_entries_min;
+
+    if force_wrap_ngclass && !inner.contains('\n') {
+        if let Some(wrapped) =
+            force_wrap_ngclass_object(inner, current_indent, use_tabs, indent_size)
+        {
+            return Some(format!("{quote}{wrapped}{quote}"));
+        }
+    }
+
+    let min_ops = options
+        .get("wrap_conditions_min")
+        .and_then(Value::as_u64)
+        .unwrap_or(2)
+        .saturating_sub(1) as usize;
+    let wrap_in_parens = options
+        .get("wrap_conditions_in_parens")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    if let Some(wrapped) = format_object_literal(
+        inner,
+        min_ops,
+        indent_size,
+        use_tabs,
+        wrap_in_parens,
+        force_wrap_ngclass,
+    ) {
+        return Some(format!("{quote}{wrapped}{quote}"));
+    }
+
+    if options
+        .get("wrap_ternary")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        if !inner.contains('\n') {
+            if let Some(wrapped) =
+                wrap_ternary(inner, min_ops, indent_size, use_tabs, current_indent)
+            {
+                return Some(format!("{quote}{wrapped}{quote}"));
+            }
+        }
+    }
+
+    if !inner.contains('\n') {
         return None;
     }
-    Some((cond, then_expr, else_expr))
+
+    let mut result_lines = Vec::new();
+    let mut changed = false;
+    for line in inner.split('\n') {
+        if changed && line.trim().is_empty() {
+            continue;
+        }
+        match wrap_line_conditions(line, min_ops, indent_size, use_tabs, 0, wrap_in_parens) {
+            Some(wrapped) => {
+                result_lines.push(wrapped);
+                changed = true;
+            }
+            None => result_lines.push(line.trim_end_matches('\r').to_string()),
+        }
+    }
+
+    if !changed {
+        return None;
+    }
+
+    Some(format!("{quote}{}{quote}", result_lines.join("\n")))
 }
 
 fn wrap_ternary(
@@ -2770,60 +2872,48 @@ fn wrap_ternary(
     indent_size: usize,
     use_tabs: bool,
     current_indent: usize,
-    _wrap_in_parens: bool,
 ) -> Option<String> {
-    let (cond, then_expr, else_expr) = split_top_level_ternary(expr)?;
-
-    // Indent continuation inside attribute values:
-    // current_indent (tag indent) + 2 levels matches the existing style.
-    let cont = if use_tabs {
+    let (condition, then_expr, else_expr) = split_top_level_ternary(expr)?;
+    let continuation = if use_tabs {
         "\t".repeat(current_indent + 2)
     } else {
         " ".repeat((current_indent + 2) * indent_size)
     };
 
-    let should_wrap_cond = count_top_level_ops(&cond) >= min_ops
-        || (min_ops > 0 && (cond.contains("&&") || cond.contains("||")))
-    ;
+    let should_wrap_condition = count_top_level_ops(&condition) >= min_ops
+        || (min_ops > 0 && (condition.contains("&&") || condition.contains("||")));
 
-    let cond_wrapped = if should_wrap_cond {
-        let parts = split_on_top_level_ops(&cond);
+    let wrapped_condition = if should_wrap_condition {
+        let parts = split_on_top_level_ops(&condition);
         if parts.len() >= 2 {
-            // Prefer the same grouped style as ngClass wrapping:
-            // (
-            //     <first>
-            //     && <next>
-            // )
             if use_tabs {
-                // For attribute values, keep `(` flush after the quote,
-                // then indent inner condition lines under `?` / `:`.
-                let group_indent = cont.clone();
+                let group_indent = continuation.clone();
                 let inner_indent = format!("{group_indent}\t");
-                let mut lines: Vec<String> = Vec::with_capacity(parts.len() + 2);
-                // Start on a new line so it visually matches ngClass-style blocks.
+                let mut lines = Vec::with_capacity(parts.len() + 2);
                 lines.push(format!("{group_indent}("));
-                lines.push(format!("{}   {}", inner_indent, parts[0].1));
-                for (op, c) in parts.into_iter().skip(1) {
-                    lines.push(format!("{}{} {}", inner_indent, op, c));
+                lines.push(format!("{inner_indent}   {}", parts[0].1));
+                for (op, item) in parts.into_iter().skip(1) {
+                    lines.push(format!("{inner_indent}{op} {item}"));
                 }
                 lines.push(format!("{group_indent})"));
                 format!("\n{}", lines.join("\n"))
             } else {
-                let mut lines: Vec<String> = Vec::with_capacity(parts.len());
-                lines.push(parts[0].1.clone());
-                for (op, c) in parts.into_iter().skip(1) {
-                    lines.push(format!("{cont}{op} {c}"));
+                let mut lines = vec![parts[0].1.clone()];
+                for (op, item) in parts.into_iter().skip(1) {
+                    lines.push(format!("{continuation}{op} {item}"));
                 }
                 lines.join("\n")
             }
         } else {
-            cond
+            condition
         }
     } else {
-        cond
+        condition
     };
 
-    Some(format!("{cond_wrapped}\n{cont}? {then_expr}\n{cont}: {else_expr}"))
+    Some(format!(
+        "{wrapped_condition}\n{continuation}? {then_expr}\n{continuation}: {else_expr}"
+    ))
 }
 
 fn format_object_literal(
@@ -2842,18 +2932,17 @@ fn format_object_literal(
         return None;
     }
 
-    // Determine indentation used by entries.
     let mut entry_ws = "";
     for line in inner.split('\n').skip(1) {
-        let l = line.trim_end_matches('\r');
-        if l.trim().is_empty() {
+        let line = line.trim_end_matches('\r');
+        if line.trim().is_empty() {
             continue;
         }
-        entry_ws = leading_ws_of_line(l);
+        entry_ws = leading_ws_of_line(line);
         break;
     }
     if entry_ws.is_empty() && use_tabs {
-        entry_ws = "\t\t\t"; // reasonable fallback for wrapped attribute values
+        entry_ws = "\t\t\t";
     }
 
     let body = trimmed[1..trimmed.len() - 1].trim();
@@ -2862,52 +2951,42 @@ fn format_object_literal(
         return None;
     }
 
-    // Indent closing brace to the same level as entries (matches typical
-    // Angular multiline object-literal style inside quoted bindings).
     let close_ws = entry_ws;
-    let mut out_lines: Vec<String> = Vec::new();
-    out_lines.push("{".to_string());
+    let mut lines = vec!["{".to_string()];
 
-    for (idx, raw_entry) in entries.iter().enumerate() {
-        let colon = match find_kv_colon(raw_entry) {
-            Some(c) => c,
-            None => {
-                out_lines.push(format!("{}{}", entry_ws, raw_entry));
-                continue;
-            }
+    for (index, entry) in entries.iter().enumerate() {
+        let Some(colon_index) = find_kv_colon(entry) else {
+            lines.push(format!("{entry_ws}{entry}"));
+            continue;
         };
-        let key_part = raw_entry[..=colon].trim_end(); // includes ':'
-        let value = raw_entry[colon + 1..].trim_start();
 
-        let is_last = idx == entries.len() - 1;
-        let suffix = if is_last { "" } else { "," };
+        let key_part = entry[..=colon_index].trim_end();
+        let value = entry[colon_index + 1..].trim_start();
+        let suffix = if index + 1 == entries.len() { "" } else { "," };
 
         if wrap_in_parens && use_tabs && is_wrappable_condition_expr(value, min_ops) {
-            // Build a synthetic single line with the inferred indentation so
-            // wrap_line_conditions can render the ideal `key:` + `(`...`)` shape.
-            let leading_tabs = entry_ws.bytes().take_while(|&b| b == b'\t').count();
-            let ws = "\t".repeat(leading_tabs);
-            let synthetic = format!("{}{} {}", ws, key_part, value);
+            let leading_tabs = entry_ws.bytes().take_while(|b| *b == b'\t').count();
+            let synthetic = format!("{}{} {}", "\t".repeat(leading_tabs), key_part, value);
             if let Some(wrapped) =
                 wrap_line_conditions(&synthetic, min_ops, indent_size, use_tabs, 0, true)
             {
-                let mut lines: Vec<String> =
-                    wrapped.split('\n').map(|l| l.to_string()).collect();
+                let mut wrapped_lines: Vec<String> =
+                    wrapped.split('\n').map(ToString::to_string).collect();
                 if suffix == "," {
-                    if let Some(last) = lines.last_mut() {
+                    if let Some(last) = wrapped_lines.last_mut() {
                         last.push(',');
                     }
                 }
-                out_lines.extend(lines);
+                lines.extend(wrapped_lines);
                 continue;
             }
         }
 
-        out_lines.push(format!("{}{} {}", entry_ws, key_part, value.trim_end_matches(',')) + suffix);
+        lines.push(format!("{entry_ws}{} {}", key_part, value.trim_end_matches(',')) + suffix);
     }
 
-    out_lines.push(format!("{}{}", close_ws, "}"));
-    Some(out_lines.join("\n"))
+    lines.push(format!("{close_ws}}}"));
+    Some(lines.join("\n"))
 }
 
 fn format_class_tokens(
@@ -2920,10 +2999,12 @@ fn format_class_tokens(
     if inner.contains('\n') {
         return None;
     }
+
     let tokens: Vec<&str> = inner.split_whitespace().collect();
     if tokens.len() < min_tokens || tokens.is_empty() {
         return None;
     }
+
     let token_indent = if use_tabs {
         "\t".repeat(current_indent + 2)
     } else {
@@ -2934,13 +3015,11 @@ fn format_class_tokens(
     } else {
         " ".repeat((current_indent + 1) * indent_size)
     };
-    // Return content without surrounding quotes; caller wraps with `"`/`'`.
-    // Keep closing quote on its own aligned line by ending with `\n{cont}`.
-    let mut out = String::new();
-    out.push('\n');
-    for t in tokens {
+
+    let mut out = String::from("\n");
+    for token in tokens {
         out.push_str(&token_indent);
-        out.push_str(t);
+        out.push_str(token);
         out.push('\n');
     }
     out.push_str(&close_indent);
@@ -2957,6 +3036,7 @@ fn force_wrap_ngclass_object(
     if !trimmed.starts_with('{') || !trimmed.ends_with('}') {
         return None;
     }
+
     let body = trimmed[1..trimmed.len() - 1].trim();
     let entries = split_top_level_commas(body);
     if entries.len() < 2 {
@@ -2969,76 +3049,16 @@ fn force_wrap_ngclass_object(
         " ".repeat((current_indent + 2) * indent_size)
     };
 
-    let mut out_lines = Vec::with_capacity(entries.len() + 2);
-    out_lines.push("{".to_string());
-    for (idx, e) in entries.iter().enumerate() {
-        let suffix = if idx + 1 == entries.len() { "" } else { "," };
-        out_lines.push(format!("{entry_indent}{}{}", e.trim(), suffix));
+    let mut lines = Vec::with_capacity(entries.len() + 2);
+    lines.push("{".to_string());
+    for (index, entry) in entries.iter().enumerate() {
+        let suffix = if index + 1 == entries.len() { "" } else { "," };
+        lines.push(format!("{entry_indent}{}{}", entry.trim(), suffix));
     }
-    out_lines.push(format!("{entry_indent}}}"));
-    Some(out_lines.join("\n"))
+    lines.push(format!("{entry_indent}}}"));
+    Some(lines.join("\n"))
 }
 
-// ── Key-value separator detection ────────────────────────────────────────────
-
-/// Find the byte offset of the first `:` in `s` that is:
-/// - at bracket/paren depth 0 and not inside a string literal
-/// - followed by a space or tab (not `://`, `::`, etc.)
-///
-/// Returns the byte index of `:` itself.
-fn find_kv_colon(s: &str) -> Option<usize> {
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-    let mut depth: i32 = 0;
-    let mut in_quote: Option<u8> = None;
-    let mut i = 0;
-
-    while i < len {
-        match in_quote {
-            Some(q) => {
-                if bytes[i] == b'\\' { i += 2; continue; }
-                if bytes[i] == q { in_quote = None; }
-                i += 1;
-            }
-            None => match bytes[i] {
-                b'"' | b'\'' | b'`' => { in_quote = Some(bytes[i]); i += 1; }
-                b'(' | b'[' | b'{' => { depth += 1; i += 1; }
-                b')' | b']' | b'}' => { depth = depth.saturating_sub(1); i += 1; }
-                b':' if depth == 0 => {
-                    let after = bytes.get(i + 1).copied().unwrap_or(b'\0');
-                    if after == b' ' || after == b'\t' {
-                        return Some(i);
-                    }
-                    i += 1;
-                }
-                _ => { i += 1; }
-            }
-        }
-    }
-    None
-}
-
-// ── Line-level condition wrapping ─────────────────────────────────────────────
-
-/// Wrap one content-line's conditions onto multiple lines with precise
-/// tab-column alignment.
-///
-/// For a line like:
-///   `\t\t\t\t\t\t'border-accent': condA || condB || condC,`
-///
-/// Output:
-///   `\t\t\t\t\t\t'border-accent':   condA `
-///   `\t\t\t\t\t\t\t\t\t\t|| condB `
-///   `\t\t\t\t\t\t\t\t\t\t|| condC,`
-///
-/// The `||` column is chosen so that `|| condX` is visually aligned with `condA`.
-/// Enough spaces are added after `:` to push `condA` to the next tab stop that
-/// allows a clean `n_tabs × tab_width` continuation.
-///
-/// Returns `None` when no wrapping is needed.
-/// `fallback_cont_indent` — number of indent units to use for continuation when
-/// there is no leading whitespace AND no key-value separator (single-line binding).
-/// Pass `0` for multiline values (leading whitespace from the line is used instead).
 fn wrap_line_conditions(
     raw_line: &str,
     min_ops: usize,
@@ -3047,21 +3067,20 @@ fn wrap_line_conditions(
     fallback_cont_indent: usize,
     wrap_in_parens: bool,
 ) -> Option<String> {
-    let line = raw_line.trim_end_matches('\r'); // handle CRLF inside strings
+    let line = raw_line.trim_end_matches('\r');
+    let leading_tabs = line.bytes().take_while(|b| *b == b'\t').count();
+    let leading_ws = &line[..leading_tabs];
+    let content = &line[leading_tabs..];
 
-    let n_leading_tabs = line.bytes().take_while(|&b| b == b'\t').count();
-    let leading_ws = &line[..n_leading_tabs];
-    let content = &line[n_leading_tabs..];
+    if content.is_empty() {
+        return None;
+    }
 
-    if content.is_empty() { return None; }
-
-    // Separate the key part (`'key':`) from the conditions expression.
     let (key_part, conditions_str) = match find_kv_colon(content) {
-        Some(colon_idx) => {
-            // key_part includes the ':' character
-            let kp = &content[..=colon_idx];
-            let after = content[colon_idx + 1..].trim_start();
-            (kp, after)
+        Some(colon_index) => {
+            let key = &content[..=colon_index];
+            let after = content[colon_index + 1..].trim_start();
+            (key, after)
         }
         None => ("", content),
     };
@@ -3081,44 +3100,44 @@ fn wrap_line_conditions(
     } else {
         split_on_top_level_ops(conditions_str)
     };
-    if parts.len() < 2 { return None; }
+    if parts.len() < 2 {
+        return None;
+    }
 
-    let first_cond = &parts[0].1;
+    let first = &parts[0].1;
 
-    // ── Tab-aligned continuation ──────────────────────────────────────────────
     if use_tabs && indent_size > 0 {
         if wrap_in_parens && !key_part.is_empty() {
-            let group_indent = format!("{}\t", leading_ws);
-            let inner_indent = format!("{}\t", group_indent);
-            let mut out_lines: Vec<String> = Vec::with_capacity(parts.len() + 2);
-            let mut last_parts = parts.clone();
-            let last_index = last_parts.len() - 1;
-            let (last_body, trailing_suffix) =
-                split_trailing_punctuation(&last_parts[last_index].1);
-            last_parts[last_index].1 = last_body;
-            out_lines.push(format!("{}{}", leading_ws, key_part));
-            out_lines.push(format!("{}(", group_indent));
+            let group_indent = format!("{leading_ws}\t");
+            let inner_indent = format!("{group_indent}\t");
+            let mut lines = Vec::with_capacity(parts.len() + 2);
+            let mut parts = parts.clone();
+            let last_index = parts.len() - 1;
+            let (body, suffix) = split_trailing_punctuation(&parts[last_index].1);
+            parts[last_index].1 = body;
+            lines.push(format!("{leading_ws}{key_part}"));
+            lines.push(format!("{group_indent}("));
             if negated_group.is_some() {
-                let negation_indent = format!("{}\t", group_indent);
-                let inner_indent = format!("{}\t", negation_indent);
-                out_lines.push(format!("{}!(", negation_indent));
-                out_lines.push(format!("{}   {}", inner_indent, first_cond));
-                for (op, cond) in last_parts[1..].iter() {
-                    out_lines.push(format!("{}{} {}", inner_indent, op, cond));
+                let negation_indent = format!("{group_indent}\t");
+                let nested_indent = format!("{negation_indent}\t");
+                lines.push(format!("{negation_indent}!("));
+                lines.push(format!("{nested_indent}   {first}"));
+                for (op, item) in parts[1..].iter() {
+                    lines.push(format!("{nested_indent}{op} {item}"));
                 }
-                out_lines.push(format!("{})", negation_indent));
+                lines.push(format!("{negation_indent})"));
             } else {
-                out_lines.push(format!("{}   {}", inner_indent, first_cond));
-                for (op, cond) in last_parts[1..].iter() {
-                    out_lines.push(format!("{}{} {}", inner_indent, op, cond));
+                lines.push(format!("{inner_indent}   {first}"));
+                for (op, item) in parts[1..].iter() {
+                    lines.push(format!("{inner_indent}{op} {item}"));
                 }
             }
-            out_lines.push(format!("{}){}", group_indent, trailing_suffix));
-            return Some(out_lines.join("\n"));
+            lines.push(format!("{group_indent}){suffix}"));
+            return Some(lines.join("\n"));
         }
 
         let tab_width = indent_size;
-        let base_col = n_leading_tabs * tab_width;
+        let base_col = leading_tabs * tab_width;
         let after_key_col = base_col + key_part.len();
         let min_op_col = (after_key_col + 1).saturating_sub(3);
         let next_tab_col = if min_op_col % tab_width == 0 {
@@ -3126,301 +3145,969 @@ fn wrap_line_conditions(
         } else {
             (min_op_col / tab_width + 1) * tab_width
         };
-        let first_cond_col = next_tab_col + 3;
-        let padding = first_cond_col - after_key_col;
-        let n_cont_tabs = next_tab_col / tab_width;
-        let cont_prefix = "\t".repeat(n_cont_tabs);
+        let first_col = next_tab_col + 3;
+        let padding = first_col - after_key_col;
+        let continuation = "\t".repeat(next_tab_col / tab_width);
 
-        let mut out_lines: Vec<String> = Vec::with_capacity(parts.len());
-        out_lines.push(format!(
-            "{}{}{}{} ",
-            leading_ws,
-            key_part,
+        let mut lines = Vec::with_capacity(parts.len());
+        lines.push(format!(
+            "{leading_ws}{key_part}{}{} ",
             " ".repeat(padding),
-            first_cond,
+            first
         ));
-        for (idx, (op, cond)) in parts[1..].iter().enumerate() {
-            let is_last = idx == parts.len() - 2;
+        for (index, (op, item)) in parts[1..].iter().enumerate() {
+            let is_last = index == parts.len() - 2;
             if is_last {
-                out_lines.push(format!("{}{} {}", cont_prefix, op, cond));
+                lines.push(format!("{continuation}{op} {item}"));
             } else {
-                out_lines.push(format!("{}{} {} ", cont_prefix, op, cond));
+                lines.push(format!("{continuation}{op} {item} "));
             }
         }
-        return Some(out_lines.join("\n"));
+        return Some(lines.join("\n"));
     }
 
-    // ── Fallback: single-line with no key-value separator ────────────────────
-    // (n_leading_tabs == 0 and key_part == "")
-    if use_tabs && n_leading_tabs == 0 && key_part.is_empty() && fallback_cont_indent > 0 {
-        let cont_prefix = "\t".repeat(fallback_cont_indent);
-
-        let mut out_lines: Vec<String> = Vec::with_capacity(parts.len());
-        out_lines.push(first_cond.clone());
-
-        for (idx, (op, cond)) in parts[1..].iter().enumerate() {
-            let is_last = idx == parts.len() - 2;
+    if use_tabs && leading_tabs == 0 && key_part.is_empty() && fallback_cont_indent > 0 {
+        let continuation = "\t".repeat(fallback_cont_indent);
+        let mut lines = vec![first.clone()];
+        for (index, (op, item)) in parts[1..].iter().enumerate() {
+            let is_last = index == parts.len() - 2;
             if is_last {
-                out_lines.push(format!("{}{} {}", cont_prefix, op, cond));
+                lines.push(format!("{continuation}{op} {item}"));
             } else {
-                out_lines.push(format!("{}{} {} ", cont_prefix, op, cond));
+                lines.push(format!("{continuation}{op} {item} "));
             }
         }
-
-        return Some(out_lines.join("\n"));
+        return Some(lines.join("\n"));
     }
 
-    // ── Space-based continuation (use_tabs = false) ───────────────────────────
-    {
-        let n_leading_spaces = line.bytes().take_while(|&b| b == b' ').count();
-        let base_col = n_leading_spaces;
-        let after_key_col = base_col + key_part.len();
-
-        let first_cond_col = after_key_col + 1;
-        let op_col = first_cond_col.saturating_sub(3);
-
-        let padding = first_cond_col - after_key_col;
-        let cont_prefix = " ".repeat(op_col);
-
-        let mut out_lines: Vec<String> = Vec::with_capacity(parts.len());
-        out_lines.push(format!(
-            "{}{}{}{} ",
-            " ".repeat(n_leading_spaces),
-            key_part,
-            " ".repeat(padding),
-            first_cond,
-        ));
-
-        for (idx, (op, cond)) in parts[1..].iter().enumerate() {
-            let is_last = idx == parts.len() - 2;
-            if is_last {
-                out_lines.push(format!("{}{} {}", cont_prefix, op, cond));
-            } else {
-                out_lines.push(format!("{}{} {} ", cont_prefix, op, cond));
-            }
+    let leading_spaces = line.bytes().take_while(|b| *b == b' ').count();
+    let after_key_col = leading_spaces + key_part.len();
+    let first_col = after_key_col + 1;
+    let op_col = first_col.saturating_sub(3);
+    let continuation = " ".repeat(op_col);
+    let mut lines = Vec::with_capacity(parts.len());
+    lines.push(format!(
+        "{}{}{}{} ",
+        " ".repeat(leading_spaces),
+        key_part,
+        " ".repeat(first_col - after_key_col),
+        first,
+    ));
+    for (index, (op, item)) in parts[1..].iter().enumerate() {
+        let is_last = index == parts.len() - 2;
+        if is_last {
+            lines.push(format!("{continuation}{op} {item}"));
+        } else {
+            lines.push(format!("{continuation}{op} {item} "));
         }
-
-        Some(out_lines.join("\n"))
     }
+    Some(lines.join("\n"))
 }
 
-// ── Attribute string reformatting ─────────────────────────────────────────────
+fn leading_ws_of_line(s: &str) -> &str {
+    let ws_len = s.bytes().take_while(|b| matches!(b, b' ' | b'\t')).count();
+    &s[..ws_len]
+}
 
-/// Process a full attribute string value (including the enclosing quote chars).
-///
-/// For multiline values each content line is processed individually.
-/// For single-line values with no key-value structure (e.g. `[buffer]="expr || expr"`)
-/// the continuation indent falls back to `current_indent + 2` tabs (attribute
-/// level + one continuation level).
-///
-/// Returns `Some(new_value)` when at least one line was wrapped.
-fn process_attribute_string(
-    text: &str,
-    attr_name: &str,
-    min_ops: usize,
-    indent_size: usize,
-    use_tabs: bool,
-    current_indent: usize,
-    wrap_in_parens: bool,
-    wrap_ternary_expr: bool,
-    ngclass_wrap_entries_min: usize,
-    class_wrap_tokens_min: usize,
-) -> Option<String> {
-    if text.len() < 2 { return None; }
+fn split_top_level_ternary(s: &str) -> Option<(String, String, String)> {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut in_quote: Option<u8> = None;
+    let mut question_index: Option<usize> = None;
+    let mut colon_index: Option<usize> = None;
+    let mut index = 0usize;
 
-    let (quote, inner) = if text.starts_with('"') && text.ends_with('"') {
-        ('"', &text[1..text.len() - 1])
-    } else if text.starts_with('\'') && text.ends_with('\'') {
-        ('\'', &text[1..text.len() - 1])
-    } else {
+    while index < bytes.len() {
+        match in_quote {
+            Some(quote) => {
+                if bytes[index] == b'\\' {
+                    index += 2;
+                    continue;
+                }
+                if bytes[index] == quote {
+                    in_quote = None;
+                }
+                index += 1;
+            }
+            None => match bytes[index] {
+                b'"' | b'\'' | b'`' => {
+                    in_quote = Some(bytes[index]);
+                    index += 1;
+                }
+                b'(' | b'[' | b'{' => {
+                    depth += 1;
+                    index += 1;
+                }
+                b')' | b']' | b'}' => {
+                    depth = depth.saturating_sub(1);
+                    index += 1;
+                }
+                b'?' if depth == 0 && question_index.is_none() => {
+                    question_index = Some(index);
+                    index += 1;
+                }
+                b':' if depth == 0 && question_index.is_some() => {
+                    colon_index = Some(index);
+                    index += 1;
+                }
+                _ => index += 1,
+            },
+        }
+    }
+
+    let question_index = question_index?;
+    let colon_index = colon_index?;
+    if question_index >= colon_index {
         return None;
-    };
-
-    // Safety normalization: plain Angular bindings like `[title]="a || b"`
-    // should remain single-line. If such values somehow carry embedded
-    // newlines, collapse them back to a compact one-liner.
-    if inner.contains('\n')
-        && attr_name.trim().starts_with('[')
-        && attr_name.trim().ends_with(']')
-        && !is_ngclass_attr(attr_name)
-        && !inner.contains('{')
-        && !inner.contains('?')
-    {
-        let compact = inner.split_whitespace().collect::<Vec<_>>().join(" ");
-        return Some(format!("{}{}{}", quote, compact, quote));
     }
 
-    if is_class_attr(attr_name) {
-        if let Some(wrapped_classes) =
-            format_class_tokens(inner, class_wrap_tokens_min, current_indent, use_tabs, indent_size)
-        {
-            return Some(format!("{}{}{}", quote, wrapped_classes, quote));
-        }
+    let condition = s[..question_index].trim().to_string();
+    let then_expr = s[question_index + 1..colon_index].trim().to_string();
+    let else_expr = s[colon_index + 1..].trim().to_string();
+
+    if condition.is_empty() || then_expr.is_empty() || else_expr.is_empty() {
+        return None;
     }
 
-    let force_wrap_ngclass = is_ngclass_attr(attr_name)
-        && split_top_level_commas(
-            inner
-                .trim()
-                .trim_start_matches('{')
-                .trim_end_matches('}')
-                .trim(),
-        )
-        .len()
-            >= ngclass_wrap_entries_min;
+    Some((condition, then_expr, else_expr))
+}
 
-    if force_wrap_ngclass && !inner.contains('\n') {
-        if let Some(obj) = force_wrap_ngclass_object(inner, current_indent, use_tabs, indent_size)
-        {
-            return Some(format!("{}{}{}", quote, obj, quote));
-        }
-    }
+fn find_kv_colon(s: &str) -> Option<usize> {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut in_quote: Option<u8> = None;
+    let mut index = 0usize;
 
-    if let Some(obj) = format_object_literal(
-        inner,
-        min_ops,
-        indent_size,
-        use_tabs,
-        wrap_in_parens,
-        force_wrap_ngclass,
-    )
-    {
-        return Some(format!("{}{}{}", quote, obj, quote));
-    }
-
-    // Optional: wrap top-level ternary expressions onto multiple lines.
-    // (Useful for `[ngStyle]="cond ? {...} : {}"` patterns.)
-    if wrap_ternary_expr && !inner.contains('\n') {
-        if let Some(wrapped) = wrap_ternary(
-            inner,
-            min_ops,
-            indent_size,
-            use_tabs,
-            current_indent,
-            wrap_in_parens,
-        ) {
-            return Some(format!("{}{}{}", quote, wrapped, quote));
-        }
-    }
-
-    // For multiline values, process line by line.
-    if inner.contains('\n') {
-        let mut result_lines: Vec<String> = Vec::new();
-        let mut changed = false;
-
-        for line in inner.split('\n') {
-            if changed && line.trim().is_empty() {
-                continue;
+    while index < bytes.len() {
+        match in_quote {
+            Some(quote) => {
+                if bytes[index] == b'\\' {
+                    index += 2;
+                    continue;
+                }
+                if bytes[index] == quote {
+                    in_quote = None;
+                }
+                index += 1;
             }
-            match wrap_line_conditions(
-                line,
-                min_ops,
-                indent_size,
-                use_tabs,
-                0,
-                wrap_in_parens,
-            ) {
-                Some(wrapped) => { result_lines.push(wrapped); changed = true; }
-                None => { result_lines.push(line.trim_end_matches('\r').to_string()); }
-            }
+            None => match bytes[index] {
+                b'"' | b'\'' | b'`' => {
+                    in_quote = Some(bytes[index]);
+                    index += 1;
+                }
+                b'(' | b'[' | b'{' => {
+                    depth += 1;
+                    index += 1;
+                }
+                b')' | b']' | b'}' => {
+                    depth = depth.saturating_sub(1);
+                    index += 1;
+                }
+                b':' if depth == 0 => {
+                    let next = bytes.get(index + 1).copied().unwrap_or_default();
+                    if next == b' ' || next == b'\t' {
+                        return Some(index);
+                    }
+                    index += 1;
+                }
+                _ => index += 1,
+            },
         }
-
-        if !changed { return None; }
-        return Some(format!("{}{}{}", quote, result_lines.join("\n"), quote));
     }
 
-    // Keep plain single-line bindings unchanged (e.g. `[title]="a || b"`).
-    // Special cases are handled above:
-    //   - ngClass object literals
-    //   - ternary expressions when enabled
     None
 }
 
-// ── Plugin entry point ────────────────────────────────────────────────────────
+```
 
+# FILE: crates/fua-plugin-angular/src/context.rs
+```rust
+pub(crate) fn is_content_context(parent_kind: &str) -> bool {
+    parent_kind == "ELEMENT" || parent_kind == "ROOT"
+}
+
+pub(crate) fn is_block_opener(text: &str) -> bool {
+    matches!(
+        text,
+        "@if" | "@for" | "@switch" | "@case" | "@default" | "@empty"
+    )
+}
+
+pub(crate) fn is_else_like(text: &str) -> bool {
+    text == "@else" || text.starts_with("@else ")
+}
+
+pub(crate) fn is_angular_binding(attr_name: &str) -> bool {
+    let name = attr_name.trim();
+    (name.starts_with('[') && name.ends_with(']'))
+        || (name.starts_with('(') && name.ends_with(')'))
+        || name.starts_with("*ng")
+        || name.starts_with("*cdk")
+}
+
+pub(crate) fn is_ngclass_attr(attr_name: &str) -> bool {
+    let name = attr_name.trim();
+    name.eq_ignore_ascii_case("[ngclass]") || name.eq_ignore_ascii_case("ngclass")
+}
+
+pub(crate) fn is_class_attr(attr_name: &str) -> bool {
+    attr_name.trim().eq_ignore_ascii_case("class")
+}
+
+```
+
+# FILE: crates/fua-plugin-angular/src/expressions.rs
+```rust
+pub(crate) fn count_top_level_ops(s: &str) -> usize {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut count = 0usize;
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'(' | b'[' | b'{' => {
+                depth += 1;
+                index += 1;
+            }
+            b')' | b']' | b'}' => {
+                depth = depth.saturating_sub(1);
+                index += 1;
+            }
+            b'"' | b'\'' | b'`' => {
+                let quote = bytes[index];
+                index += 1;
+                while index < bytes.len() {
+                    if bytes[index] == b'\\' {
+                        index += 2;
+                        continue;
+                    }
+                    if bytes[index] == quote {
+                        index += 1;
+                        break;
+                    }
+                    index += 1;
+                }
+            }
+            b'|' if depth == 0 && bytes.get(index + 1) == Some(&b'|') => {
+                count += 1;
+                index += 2;
+            }
+            b'&' if depth == 0 && bytes.get(index + 1) == Some(&b'&') => {
+                count += 1;
+                index += 2;
+            }
+            _ => index += 1,
+        }
+    }
+
+    count
+}
+
+pub(crate) fn split_on_top_level_ops(s: &str) -> Vec<(String, String)> {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut current_op = String::new();
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'(' | b'[' | b'{' => {
+                depth += 1;
+                current.push(bytes[index] as char);
+                index += 1;
+            }
+            b')' | b']' | b'}' => {
+                depth = depth.saturating_sub(1);
+                current.push(bytes[index] as char);
+                index += 1;
+            }
+            b'"' | b'\'' | b'`' => {
+                let quote = bytes[index];
+                current.push(quote as char);
+                index += 1;
+                while index < bytes.len() {
+                    current.push(bytes[index] as char);
+                    if bytes[index] == b'\\' {
+                        index += 1;
+                        if index < bytes.len() {
+                            current.push(bytes[index] as char);
+                        }
+                    } else if bytes[index] == quote {
+                        index += 1;
+                        break;
+                    }
+                    index += 1;
+                }
+            }
+            b'|' if depth == 0 && bytes.get(index + 1) == Some(&b'|') => {
+                parts.push((current_op.clone(), current.trim().to_string()));
+                current_op = "||".to_string();
+                current.clear();
+                index += 2;
+                while matches!(bytes.get(index), Some(b' ' | b'\t')) {
+                    index += 1;
+                }
+            }
+            b'&' if depth == 0 && bytes.get(index + 1) == Some(&b'&') => {
+                parts.push((current_op.clone(), current.trim().to_string()));
+                current_op = "&&".to_string();
+                current.clear();
+                index += 2;
+                while matches!(bytes.get(index), Some(b' ' | b'\t')) {
+                    index += 1;
+                }
+            }
+            _ => {
+                current.push(bytes[index] as char);
+                index += 1;
+            }
+        }
+    }
+
+    let last = current.trim().to_string();
+    if !last.is_empty() || !current_op.is_empty() {
+        parts.push((current_op, last));
+    }
+
+    parts
+}
+
+pub(crate) fn split_trailing_punctuation(s: &str) -> (String, String) {
+    let trimmed = s.trim_end();
+    if let Some(last) = trimmed.chars().last() {
+        if matches!(last, ',' | ';') {
+            let body = trimmed[..trimmed.len() - last.len_utf8()]
+                .trim_end()
+                .to_string();
+            return (body, last.to_string());
+        }
+    }
+    (trimmed.to_string(), String::new())
+}
+
+pub(crate) fn unwrap_negated_group(s: &str) -> Option<&str> {
+    let trimmed = s.trim();
+    if !trimmed.starts_with("!(") || !trimmed.ends_with(')') {
+        return None;
+    }
+
+    let inner = &trimmed[2..trimmed.len() - 1];
+    if count_top_level_ops(inner) == 0 {
+        return None;
+    }
+
+    Some(inner.trim())
+}
+
+pub(crate) fn is_wrappable_condition_expr(s: &str, min_ops: usize) -> bool {
+    let trimmed = s.trim();
+    count_top_level_ops(trimmed) >= min_ops || unwrap_negated_group(trimmed).is_some()
+}
+
+pub(crate) fn split_top_level_commas(s: &str) -> Vec<String> {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut in_quote: Option<u8> = None;
+    let mut current = String::new();
+    let mut parts = Vec::new();
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        match in_quote {
+            Some(quote) => {
+                current.push(bytes[index] as char);
+                if bytes[index] == b'\\' {
+                    index += 1;
+                    if index < bytes.len() {
+                        current.push(bytes[index] as char);
+                    }
+                } else if bytes[index] == quote {
+                    in_quote = None;
+                }
+            }
+            None => match bytes[index] {
+                b'"' | b'\'' | b'`' => {
+                    in_quote = Some(bytes[index]);
+                    current.push(bytes[index] as char);
+                }
+                b'(' | b'[' | b'{' => {
+                    depth += 1;
+                    current.push(bytes[index] as char);
+                }
+                b')' | b']' | b'}' => {
+                    depth = depth.saturating_sub(1);
+                    current.push(bytes[index] as char);
+                }
+                b',' if depth == 0 => {
+                    let part = current.trim();
+                    if !part.is_empty() {
+                        parts.push(part.to_string());
+                    }
+                    current.clear();
+                }
+                _ => current.push(bytes[index] as char),
+            },
+        }
+        index += 1;
+    }
+
+    let last = current.trim();
+    if !last.is_empty() {
+        parts.push(last.to_string());
+    }
+
+    parts
+}
+
+```
+
+# FILE: crates/fua-plugin-angular/src/hooks.rs
+```rust
+use crate::attributes::process_attribute_string;
+use crate::context::{
+    is_angular_binding, is_block_opener, is_class_attr, is_content_context, is_else_like,
+};
+use crate::response::{
+    HookResponseExt, condition_whitespace_replacement, replacement, replacement_with_spacing,
+};
+use crate::state::{read_state, reset_state, with_state};
+use fua_plugin_api::{
+    HookRequest, HookResponse, LeadingSpacing, NodeHook, NodePhase, Replacement, TokenHook,
+};
+use serde_json::{Value, json};
+
+pub fn dispatch_hook(request: HookRequest<'static>) -> HookResponse {
+    match request {
+        HookRequest::Node(node) => handle_node_hook(&node),
+        HookRequest::Token(token) => handle_token_hook(&token),
+    }
+}
+
+fn handle_node_hook(node: &NodeHook<'_>) -> HookResponse {
+    if node.phase == NodePhase::Enter && node.kind == "ROOT" {
+        reset_state();
+    }
+
+    HookResponse::Continue
+}
+
+fn handle_token_hook(token: &TokenHook<'_>) -> HookResponse {
+    if should_process_attribute_string(token) {
+        return handle_attribute_string(token);
+    }
+
+    if !is_content_context(token.context.parent_kind.as_ref()) {
+        return HookResponse::Continue;
+    }
+
+    match token.kind.as_ref() {
+        "IDENT" => handle_content_ident(token),
+        "WHITESPACE" => handle_content_whitespace(token),
+        "TEXT" => handle_content_text(token),
+        _ => HookResponse::Continue,
+    }
+}
+
+fn should_process_attribute_string(token: &TokenHook<'_>) -> bool {
+    matches!(token.kind.as_ref(), "STRING_DOUBLE" | "STRING_SINGLE")
+        && matches!(
+            token.context.parent_kind.as_ref(),
+            "OPEN_TAG" | "SELF_CLOSING_TAG"
+        )
+        && token
+            .context
+            .attribute_name
+            .as_deref()
+            .is_some_and(|name| is_angular_binding(name) || is_class_attr(name))
+}
+
+fn handle_attribute_string(token: &TokenHook<'_>) -> HookResponse {
+    let options = plugin_options(token.plugin_options.as_deref());
+    let attr_name = token.context.attribute_name.as_deref().unwrap_or_default();
+
+    if let Some(output) = process_attribute_string(
+        token.text.as_ref(),
+        attr_name,
+        &options,
+        token.context.current_indent,
+        token.context.indent_size,
+        token.context.use_tabs,
+    ) {
+        replacement(output)
+    } else {
+        HookResponse::Continue
+    }
+}
+
+fn handle_content_ident(token: &TokenHook<'_>) -> HookResponse {
+    if is_block_opener(token.text.as_ref()) {
+        let _ = with_state(|state| {
+            state.awaiting_condition_start = true;
+        });
+        return replacement_with_spacing(token.text.as_ref(), LeadingSpacing::LineBreak);
+    }
+
+    if is_else_like(token.text.as_ref()) {
+        return replacement_with_spacing(token.text.as_ref(), LeadingSpacing::Space);
+    }
+
+    clear_pending_condition_start();
+    HookResponse::Continue
+}
+
+fn handle_content_whitespace(token: &TokenHook<'_>) -> HookResponse {
+    let options = plugin_options(token.plugin_options.as_deref());
+    let Some(target_indent) = read_state(|state| {
+        if state.condition_depth == 0 || !token.text.contains('\n') {
+            return None;
+        }
+
+        let next_is_close_paren = token.context.next_kind.as_deref() == Some("TEXT")
+            && token.context.next_text.as_deref() == Some(")");
+        let target_indent = if options
+            .get("indent_condition_groups")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            state.condition_base_indent + state.condition_depth - usize::from(next_is_close_paren)
+        } else if next_is_close_paren {
+            state.condition_base_indent
+        } else {
+            state.condition_base_indent + 1
+        };
+
+        Some(target_indent)
+    })
+    .flatten() else {
+        return HookResponse::Continue;
+    };
+
+    condition_whitespace_replacement(token.context.current_indent, target_indent)
+}
+
+fn handle_content_text(token: &TokenHook<'_>) -> HookResponse {
+    match token.text.as_ref() {
+        "(" => open_condition_group(token.context.current_indent),
+        ")" => close_condition_group(),
+        "{" => replacement_with_spacing("{", LeadingSpacing::Space).map_indent(0, 1),
+        "}" => HookResponse::replace(
+            Replacement::text("}")
+                .with_indent(-1, 0)
+                .with_leading(LeadingSpacing::LineBreak),
+        ),
+        _ => {
+            clear_pending_condition_start();
+            HookResponse::Continue
+        }
+    }
+}
+
+fn open_condition_group(current_indent: usize) -> HookResponse {
+    let response = with_state(|state| {
+        if state.awaiting_condition_start {
+            state.awaiting_condition_start = false;
+            state.condition_depth = 1;
+            state.condition_base_indent = current_indent;
+            return Some(replacement("("));
+        }
+
+        if state.condition_depth > 0 {
+            state.condition_depth += 1;
+            return Some(replacement("("));
+        }
+
+        None
+    })
+    .flatten();
+
+    response.unwrap_or(HookResponse::Continue)
+}
+
+fn close_condition_group() -> HookResponse {
+    let response = with_state(|state| {
+        if state.condition_depth > 0 {
+            state.condition_depth = state.condition_depth.saturating_sub(1);
+            Some(replacement(")"))
+        } else {
+            None
+        }
+    })
+    .flatten();
+
+    response.unwrap_or(HookResponse::Continue)
+}
+
+fn clear_pending_condition_start() {
+    let _ = with_state(|state| {
+        if state.awaiting_condition_start {
+            state.awaiting_condition_start = false;
+        }
+    });
+}
+
+fn plugin_options(plugin_options: Option<&str>) -> Value {
+    plugin_options
+        .and_then(|options| serde_json::from_str(options).ok())
+        .unwrap_or_else(|| json!({}))
+}
+
+```
+
+# FILE: crates/fua-plugin-angular/src/lib.rs
+```rust
+mod attributes;
+mod context;
+mod expressions;
+mod hooks;
+mod response;
+mod state;
+
+pub use hooks::dispatch_hook;
+
+#[cfg(target_arch = "wasm32")]
+use extism_pdk::*;
+#[cfg(target_arch = "wasm32")]
+use fua_plugin_api::{HookRequest, HookResponse};
+
+#[cfg(target_arch = "wasm32")]
 #[plugin_fn]
-pub fn format_hook(input: String) -> FnResult<String> {
-    let node: NodeData = match serde_json::from_str(&input) {
-        Ok(n) => n,
+pub fn handle_hook(input: String) -> FnResult<String> {
+    let request = match serde_json::from_str::<HookRequest<'static>>(&input) {
+        Ok(request) => request,
         Err(_) => return Ok(String::new()),
     };
 
-    let opts: serde_json::Value = node
-        .plugin_options
-        .as_deref()
-        .and_then(|s| serde_json::from_str(s).ok())
-        .unwrap_or(serde_json::json!({}));
+    let response = dispatch_hook(request);
+    match response {
+        HookResponse::Continue => Ok(String::new()),
+        other => Ok(serde_json::to_string(&other).unwrap_or_default()),
+    }
+}
 
-    let result: Option<PluginResult> = match node.kind.as_str() {
-
-        // ── STRING values inside Angular binding attributes ───────────────────
-        "STRING_DOUBLE" | "STRING_SINGLE"
-            if (node.parent_kind == "OPEN_TAG"
-                || node.parent_kind == "SELF_CLOSING_TAG")
-                && (is_angular_binding(&node.attribute_name)
-                    || is_class_attr(&node.attribute_name)) =>
-        {
-            // wrap_conditions_min counts *conditions* (operands), so
-            // wrap when operators >= min_conds - 1.
-            let min_conds = opts
-                .get("wrap_conditions_min")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(2) as usize;
-            let min_ops = min_conds.saturating_sub(1);
-            let wrap_in_parens = opts
-                .get("wrap_conditions_in_parens")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-
-            process_attribute_string(
-                &node.text,
-                &node.attribute_name,
-                min_ops,
-                node.indent_size,
-                node.use_tabs,
-                node.current_indent,
-                wrap_in_parens,
-                opts.get("wrap_ternary")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
-                opts.get("ngclass_wrap_entries_min")
-                    .and_then(|v| v.as_u64())
-                    .map(|v| v as usize)
-                    .unwrap_or(usize::MAX),
-                opts.get("class_wrap_tokens_min")
-                    .and_then(|v| v.as_u64())
-                    .map(|v| v as usize)
-                    .unwrap_or(usize::MAX),
-            )
-            .map(PluginResult::just)
-        }
-
-        // ── Angular control-flow IDENT tokens ────────────────────────────────
-        "IDENT" if is_content_context(&node.parent_kind) => {
-            if is_block_opener(&node.text) {
-                Some(PluginResult::new(&*node.text, 0, true, false))
-            } else if is_else_like(&node.text) {
-                Some(PluginResult::new(&*node.text, 0, false, true))
-            } else {
-                None
-            }
-        }
-
-        // ── Block delimiters ─────────────────────────────────────────────────
-        "TEXT" if is_content_context(&node.parent_kind) => {
-            match node.text.as_str() {
-                "{" => Some(PluginResult::new("{", 1, false, true)),
-                "}" => Some(PluginResult::new("}", -1, true, false)),
-                _ => None,
-            }
-        }
-
-        _ => None,
+#[cfg(test)]
+mod tests {
+    use super::dispatch_hook;
+    use fua_plugin_api::{
+        HookContext, HookRequest, HookResponse, LeadingSpacing, NodeHook, NodePhase, Replacement,
+        TokenHook,
     };
+    use std::borrow::Cow;
 
-    match result {
-        Some(r) => Ok(serde_json::to_string(&r).unwrap_or_default()),
-        None => Ok(String::new()),
+    fn token_request(
+        kind: &'static str,
+        text: &'static str,
+        parent_kind: &'static str,
+    ) -> HookRequest<'static> {
+        HookRequest::Token(TokenHook {
+            kind: Cow::Borrowed(kind),
+            text: Cow::Borrowed(text),
+            context: HookContext::new(parent_kind, None, None, 2, 2, false),
+            plugin_options: None,
+        })
+    }
+
+    #[test]
+    fn resets_state_on_root_enter() {
+        let request = HookRequest::Node(NodeHook {
+            phase: NodePhase::Enter,
+            kind: Cow::Borrowed("ROOT"),
+            text: Cow::Borrowed(""),
+            tag_name: None,
+            context: HookContext::new("NONE", None, None, 0, 2, false),
+            plugin_options: None,
+        });
+
+        let response = dispatch_hook(request);
+        assert_eq!(response, HookResponse::Continue);
+    }
+
+    #[test]
+    fn block_openers_start_on_a_new_line() {
+        let response = dispatch_hook(token_request("IDENT", "@if", "ROOT"));
+        assert_eq!(
+            response,
+            HookResponse::replace(Replacement::text("@if").with_leading(LeadingSpacing::LineBreak),)
+        );
+    }
+}
+
+```
+
+# FILE: crates/fua-plugin-angular/src/response.rs
+```rust
+use fua_plugin_api::{HookResponse, LeadingSpacing, Replacement};
+
+pub(crate) fn replacement(output: impl Into<String>) -> HookResponse {
+    HookResponse::replace(Replacement::text(output))
+}
+
+pub(crate) fn replacement_with_spacing(
+    output: impl Into<String>,
+    spacing: LeadingSpacing,
+) -> HookResponse {
+    HookResponse::replace(Replacement::text(output).with_leading(spacing))
+}
+
+pub(crate) fn condition_whitespace_replacement(
+    current_indent: usize,
+    target_indent: usize,
+) -> HookResponse {
+    let delta = target_indent as i32 - current_indent as i32;
+    HookResponse::replace(
+        Replacement::text("")
+            .with_indent(delta, -delta)
+            .with_leading(LeadingSpacing::LineBreak),
+    )
+}
+
+pub(crate) trait HookResponseExt {
+    fn map_indent(self, indent_before: i32, indent_after: i32) -> Self;
+}
+
+impl HookResponseExt for HookResponse {
+    fn map_indent(self, indent_before: i32, indent_after: i32) -> Self {
+        match self {
+            HookResponse::Continue => HookResponse::Continue,
+            HookResponse::Replace(replacement) => {
+                HookResponse::Replace(replacement.with_indent(indent_before, indent_after))
+            }
+        }
+    }
+}
+
+```
+
+# FILE: crates/fua-plugin-angular/src/state.rs
+```rust
+use std::sync::{Mutex, OnceLock};
+
+#[derive(Debug, Default)]
+pub(crate) struct AngularState {
+    pub(crate) condition_depth: usize,
+    pub(crate) condition_base_indent: usize,
+    pub(crate) awaiting_condition_start: bool,
+}
+
+fn state() -> &'static Mutex<AngularState> {
+    static STATE: OnceLock<Mutex<AngularState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(AngularState::default()))
+}
+
+pub(crate) fn reset_state() {
+    if let Ok(mut state) = state().lock() {
+        *state = AngularState::default();
+    }
+}
+
+pub(crate) fn with_state<T>(f: impl FnOnce(&mut AngularState) -> T) -> Option<T> {
+    state().lock().ok().map(|mut state| f(&mut state))
+}
+
+pub(crate) fn read_state<T>(f: impl FnOnce(&AngularState) -> T) -> Option<T> {
+    state().lock().ok().map(|state| f(&state))
+}
+
+```
+
+# FILE: crates/fua-plugin-api/Cargo.toml
+```toml
+[package]
+name = "fua-plugin-api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+
+```
+
+# FILE: crates/fua-plugin-api/src/lib.rs
+```rust
+use std::borrow::Cow;
+
+use serde::{Deserialize, Serialize};
+
+pub const HANDLE_HOOK_EXPORT: &str = "handle_hook";
+
+pub type Text<'a> = Cow<'a, str>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NodePhase {
+    Enter,
+    Exit,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HookContext<'a> {
+    pub parent_kind: Text<'a>,
+    pub tag_name: Option<Text<'a>>,
+    pub attribute_name: Option<Text<'a>>,
+    pub previous_kind: Option<Text<'a>>,
+    pub previous_text: Option<Text<'a>>,
+    pub next_kind: Option<Text<'a>>,
+    pub next_text: Option<Text<'a>>,
+    pub current_indent: usize,
+    pub indent_size: usize,
+    pub use_tabs: bool,
+}
+
+impl<'a> HookContext<'a> {
+    pub fn new(
+        parent_kind: &'a str,
+        tag_name: Option<&'a str>,
+        attribute_name: Option<&'a str>,
+        current_indent: usize,
+        indent_size: usize,
+        use_tabs: bool,
+    ) -> Self {
+        Self {
+            parent_kind: Cow::Borrowed(parent_kind),
+            tag_name: tag_name.map(Cow::Borrowed),
+            attribute_name: attribute_name.map(Cow::Borrowed),
+            previous_kind: None,
+            previous_text: None,
+            next_kind: None,
+            next_text: None,
+            current_indent,
+            indent_size,
+            use_tabs,
+        }
+    }
+
+    pub fn with_neighbors(
+        mut self,
+        previous_kind: Option<&'a str>,
+        previous_text: Option<&'a str>,
+        next_kind: Option<&'a str>,
+        next_text: Option<&'a str>,
+    ) -> Self {
+        self.previous_kind = previous_kind.map(Cow::Borrowed);
+        self.previous_text = previous_text.map(Cow::Borrowed);
+        self.next_kind = next_kind.map(Cow::Borrowed);
+        self.next_text = next_text.map(Cow::Borrowed);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeHook<'a> {
+    pub phase: NodePhase,
+    pub kind: Text<'a>,
+    pub text: Text<'a>,
+    pub tag_name: Option<Text<'a>>,
+    pub context: HookContext<'a>,
+    pub plugin_options: Option<Text<'a>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TokenHook<'a> {
+    pub kind: Text<'a>,
+    pub text: Text<'a>,
+    pub context: HookContext<'a>,
+    pub plugin_options: Option<Text<'a>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "hook", rename_all = "snake_case")]
+pub enum HookRequest<'a> {
+    Node(NodeHook<'a>),
+    Token(TokenHook<'a>),
+}
+
+impl<'a> HookRequest<'a> {
+    pub fn node(
+        phase: NodePhase,
+        kind: &'a str,
+        text: &'a str,
+        tag_name: Option<&'a str>,
+        context: HookContext<'a>,
+    ) -> Self {
+        Self::Node(NodeHook {
+            phase,
+            kind: Cow::Borrowed(kind),
+            text: Cow::Borrowed(text),
+            tag_name: tag_name.map(Cow::Borrowed),
+            context,
+            plugin_options: None,
+        })
+    }
+
+    pub fn token(kind: &'a str, text: &'a str, context: HookContext<'a>) -> Self {
+        Self::Token(TokenHook {
+            kind: Cow::Borrowed(kind),
+            text: Cow::Borrowed(text),
+            context,
+            plugin_options: None,
+        })
+    }
+
+    pub fn with_plugin_options(self, plugin_options: Option<Text<'a>>) -> Self {
+        match self {
+            Self::Node(mut hook) => {
+                hook.plugin_options = plugin_options;
+                Self::Node(hook)
+            }
+            Self::Token(mut hook) => {
+                hook.plugin_options = plugin_options;
+                Self::Token(hook)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LeadingSpacing {
+    None,
+    Space,
+    LineBreak,
+    BlankLine,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Replacement {
+    pub output: String,
+    pub indent_before: i32,
+    pub indent_after: i32,
+    pub leading_spacing: LeadingSpacing,
+}
+
+impl Replacement {
+    pub fn text(output: impl Into<String>) -> Self {
+        Self {
+            output: output.into(),
+            indent_before: 0,
+            indent_after: 0,
+            leading_spacing: LeadingSpacing::None,
+        }
+    }
+
+    pub fn with_leading(mut self, leading_spacing: LeadingSpacing) -> Self {
+        self.leading_spacing = leading_spacing;
+        self
+    }
+
+    pub fn with_indent(mut self, indent_before: i32, indent_after: i32) -> Self {
+        self.indent_before = indent_before;
+        self.indent_after = indent_after;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "result", rename_all = "snake_case")]
+pub enum HookResponse {
+    Continue,
+    Replace(Replacement),
+}
+
+impl HookResponse {
+    pub fn replace(replacement: Replacement) -> Self {
+        Self::Replace(replacement)
     }
 }
 
@@ -3436,18 +4123,20 @@ pub fn format_hook(input: String) -> FnResult<String> {
   "wrap_attributes": true,
   "single_quotes": false,
   "wrap_content": true,
-  "indent_condition_groups": true,
   "inline_short_elements_max_len": 80,
-  "plugin": {
-    "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
-    "options": {
-      "wrap_conditions_min": 2,
-      "wrap_conditions_in_parens": true,
-      "wrap_ternary": true,
-      "ngclass_wrap_entries_min": 2,
-      "class_wrap_tokens_min": 6
+  "plugins": [
+    {
+      "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
+      "options": {
+        "wrap_conditions_min": 2,
+        "wrap_conditions_in_parens": true,
+        "wrap_ternary": true,
+        "ngclass_wrap_entries_min": 2,
+        "class_wrap_tokens_min": 6,
+        "indent_condition_groups": true
+      }
     }
-  }
+  ]
 }
 
 ```
@@ -7655,62 +8344,6 @@ export default ReactComponent;
   </div>
 </main>
 }
-```
-
-# FILE: examples/test_plain.html
-```html
-<!DOCTYPE html>
-<html   lang="en">
-<head>
-    <meta     charset="UTF-8">
-  <meta name="viewport"    content="width=device-width, initial-scale=1.0">
-        <title>Plain HTML Test</title>
-  <link rel="stylesheet"     href="styles.css">
-</head>
-<body>
-  <header       class="site-header">
-<nav class="nav">
-              <a    href="/"   class="nav-logo">Home</a>
-    <ul class="nav-links"  >
-      <li><a href="/about">About</a></li>
-              <li><a   href="/blog"  >Blog</a></li>
-      <li><a href="/contact"  >Contact</a></li>
-    </ul>
-  </nav>
-</header>
-
-    <main   class="container">
-<section    class="hero">
-        <h1 class="hero-title"   >Welcome to the site</h1>
-  <p  class="hero-subtitle"  >A simple, fast, clean website.</p>
-        <a     href="/get-started"   class="btn btn-primary">Get Started</a>
-</section>
-
-<section class="features"   >
-  <article  class="card"  >
-              <img src="icon1.svg"    alt="Feature one"   width="48"   height="48">
-    <h2>Fast</h2>
-            <p>   Loads in under a second on any connection.   </p>
-  </article>
-      <article class="card">
-    <img   src="icon2.svg" alt="Feature two" width="48" height="48">
-              <h2>  Accessible  </h2>
-    <p>Built with semantic HTML and ARIA labels.</p>
-  </article>
-  <article class="card">
-    <img src="icon3.svg" alt="Feature three"   width="48" height="48">
-    <h2>Open Source</h2>
-    <p>Every line of code is public on GitHub.</p>
-  </article>
-</section>
-    </main>
-
-      <footer  class="site-footer">
-  <p>&copy; 2024 My Site.   All rights reserved.</p>
-      </footer>
-</body>
-</html>
-
 ```
 
 # FILE: examples/test_plain_formatted.html

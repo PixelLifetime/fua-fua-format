@@ -6,16 +6,17 @@
   "wrap_attributes": true,
   "single_quotes": false,
   "wrap_content": true,
-  "indent_condition_groups": true,
-  "inline_short_elements_max_len": 80,
-  "plugin": {
-    "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
-    "options": {
-      "wrap_conditions_min": 2,
-      "wrap_conditions_in_parens": true,
-      "wrap_ternary": true,
-      "ngclass_wrap_entries_min": 2,
-      "class_wrap_tokens_min": 6
+  "plugins": [
+    {
+      "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
+      "options": {
+        "wrap_conditions_min": 2,
+        "wrap_conditions_in_parens": true,
+        "wrap_ternary": true,
+        "ngclass_wrap_entries_min": 2,
+        "class_wrap_tokens_min": 6,
+        "indent_condition_groups": true
+      }
     }
-  }
+  ]
 }
