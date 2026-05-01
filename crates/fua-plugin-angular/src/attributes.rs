@@ -1,4 +1,4 @@
-use crate::context::{is_class_attr, is_ngclass_attr};
+use crate::context::is_ngclass_attr;
 use crate::expressions::{
     count_top_level_ops, is_wrappable_condition_expr, split_on_top_level_ops,
     split_top_level_commas, split_trailing_punctuation, unwrap_negated_group,
@@ -34,23 +34,6 @@ pub(crate) fn process_attribute_string(
     {
         let compact = inner.split_whitespace().collect::<Vec<_>>().join(" ");
         return Some(format!("{quote}{compact}{quote}"));
-    }
-
-    let class_wrap_tokens_min = options
-        .get("class_wrap_tokens_min")
-        .and_then(Value::as_u64)
-        .map(|value| value as usize)
-        .unwrap_or(usize::MAX);
-    if is_class_attr(attr_name) {
-        if let Some(wrapped) = format_class_tokens(
-            inner,
-            class_wrap_tokens_min,
-            current_indent,
-            use_tabs,
-            indent_size,
-        ) {
-            return Some(format!("{quote}{wrapped}{quote}"));
-        }
     }
 
     let ngclass_wrap_entries_min = options
@@ -259,43 +242,6 @@ fn format_object_literal(
 
     lines.push(format!("{close_ws}}}"));
     Some(lines.join("\n"))
-}
-
-fn format_class_tokens(
-    inner: &str,
-    min_tokens: usize,
-    current_indent: usize,
-    use_tabs: bool,
-    indent_size: usize,
-) -> Option<String> {
-    if inner.contains('\n') {
-        return None;
-    }
-
-    let tokens: Vec<&str> = inner.split_whitespace().collect();
-    if tokens.len() < min_tokens || tokens.is_empty() {
-        return None;
-    }
-
-    let token_indent = if use_tabs {
-        "\t".repeat(current_indent + 2)
-    } else {
-        " ".repeat((current_indent + 2) * indent_size)
-    };
-    let close_indent = if use_tabs {
-        "\t".repeat(current_indent + 1)
-    } else {
-        " ".repeat((current_indent + 1) * indent_size)
-    };
-
-    let mut out = String::from("\n");
-    for token in tokens {
-        out.push_str(&token_indent);
-        out.push_str(token);
-        out.push('\n');
-    }
-    out.push_str(&close_indent);
-    Some(out)
 }
 
 fn force_wrap_ngclass_object(
@@ -588,4 +534,141 @@ fn find_kv_colon(s: &str) -> Option<usize> {
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::process_attribute_string;
+    use crate::expressions::{count_top_level_ops, split_on_top_level_ops, unwrap_negated_group};
+    use serde_json::json;
+
+    struct NgClassEntry<'a> {
+        key: &'a str,
+        value: &'a str,
+    }
+
+    fn generate_ngclass_expected(
+        entries: &[NgClassEntry<'_>],
+        wrap_conditions_min: usize,
+        wrap_conditions_in_parens: bool,
+        current_indent: usize,
+        indent_size: usize,
+        use_tabs: bool,
+    ) -> String {
+        let quote = '"';
+        let entry_indent = if use_tabs {
+            "\t".repeat(current_indent + 2)
+        } else {
+            " ".repeat((current_indent + 2) * indent_size)
+        };
+        let group_indent = if use_tabs {
+            format!("{entry_indent}\t")
+        } else {
+            format!("{entry_indent}{}", " ".repeat(indent_size))
+        };
+        let inner_indent = if use_tabs {
+            format!("{group_indent}\t")
+        } else {
+            format!("{group_indent}{}", " ".repeat(indent_size))
+        };
+
+        let mut lines = vec!["{".to_string()];
+        for (index, entry) in entries.iter().enumerate() {
+            let is_last = index + 1 == entries.len();
+            let suffix = if is_last { "" } else { "," };
+            let negated = unwrap_negated_group(entry.value);
+            let target_expr = negated.unwrap_or(entry.value);
+            let should_wrap = wrap_conditions_in_parens
+                && count_top_level_ops(target_expr) >= wrap_conditions_min.saturating_sub(1)
+                && split_on_top_level_ops(target_expr).len() >= 2;
+
+            if should_wrap {
+                let parts = split_on_top_level_ops(target_expr);
+                lines.push(format!("{entry_indent}{}:", entry.key));
+                lines.push(format!("{group_indent}("));
+                if negated.is_some() {
+                    let neg_indent = if use_tabs {
+                        format!("{group_indent}\t")
+                    } else {
+                        format!("{group_indent}{}", " ".repeat(indent_size))
+                    };
+                    let neg_inner_indent = if use_tabs {
+                        format!("{neg_indent}\t")
+                    } else {
+                        format!("{neg_indent}{}", " ".repeat(indent_size))
+                    };
+                    lines.push(format!("{neg_indent}!("));
+                    lines.push(format!("{neg_inner_indent}   {}", parts[0].1));
+                    for (op, expr) in parts.iter().skip(1) {
+                        lines.push(format!("{neg_inner_indent}{op} {expr}"));
+                    }
+                    lines.push(format!("{neg_indent})"));
+                } else {
+                    lines.push(format!("{inner_indent}   {}", parts[0].1));
+                    for (op, expr) in parts.iter().skip(1) {
+                        lines.push(format!("{inner_indent}{op} {expr}"));
+                    }
+                }
+                lines.push(format!("{group_indent}){suffix}"));
+            } else {
+                lines.push(format!("{entry_indent}{}: {}{}", entry.key, entry.value, suffix));
+            }
+        }
+        lines.push(format!("{entry_indent}}}"));
+
+        format!("{quote}{}{quote}", lines.join("\n"))
+    }
+
+    #[test]
+    fn generates_ngclass_object_wrapping_like_real_template_case() {
+        let entries = [
+            NgClassEntry {
+                key: "'border-accent'",
+                value: "this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges",
+            },
+            NgClassEntry {
+                key: "'border-quaternary'",
+                value: "!(this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges)",
+            },
+        ];
+        let input = "\"{\n\t\t'border-accent': this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges,\n\t\t'border-quaternary': !(this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges)\n}\"";
+        let options = json!({
+            "wrap_conditions_min": 2,
+            "wrap_conditions_in_parens": true,
+            "ngclass_wrap_entries_min": 2
+        });
+
+        // Multiline ngClass uses existing leading indentation from the source text.
+        let actual = process_attribute_string(input, "[ngClass]", &options, 0, 4, true);
+        let expected = generate_ngclass_expected(&entries, 2, true, 0, 4, true);
+
+        assert_eq!(Some(expected), actual);
+    }
+
+    #[test]
+    fn forces_single_line_ngclass_into_multiline_entries() {
+        let input =
+            "\"{'border-accent': this.hasImageChanges, 'border-quaternary': !this.hasImageChanges}\"";
+        let options = json!({
+            "ngclass_wrap_entries_min": 2
+        });
+
+        let actual = process_attribute_string(input, "[ngClass]", &options, 1, 4, true);
+        let expected = "\"{\n\t\t\t'border-accent': this.hasImageChanges,\n\t\t\t'border-quaternary': !this.hasImageChanges\n\t\t\t}\"".to_string();
+
+        assert_eq!(Some(expected), actual);
+    }
+
+    #[test]
+    fn keeps_ngclass_unchanged_when_threshold_not_reached() {
+        let input = "\"{'border-accent': this.hasImageChanges}\"";
+        let options = json!({
+            "ngclass_wrap_entries_min": 2,
+            "wrap_conditions_min": 2,
+            "wrap_conditions_in_parens": true
+        });
+
+        let actual = process_attribute_string(input, "[ngClass]", &options, 1, 4, true);
+        assert_eq!(None, actual);
+    }
 }

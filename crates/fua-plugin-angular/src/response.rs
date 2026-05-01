@@ -11,18 +11,6 @@ pub(crate) fn replacement_with_spacing(
     HookResponse::replace(Replacement::text(output).with_leading(spacing))
 }
 
-pub(crate) fn condition_whitespace_replacement(
-    current_indent: usize,
-    target_indent: usize,
-) -> HookResponse {
-    let delta = target_indent as i32 - current_indent as i32;
-    HookResponse::replace(
-        Replacement::text("")
-            .with_indent(delta, -delta)
-            .with_leading(LeadingSpacing::LineBreak),
-    )
-}
-
 pub(crate) trait HookResponseExt {
     fn map_indent(self, indent_before: i32, indent_after: i32) -> Self;
 }

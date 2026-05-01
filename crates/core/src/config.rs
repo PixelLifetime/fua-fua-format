@@ -23,6 +23,8 @@ pub struct FormatterConfig {
     pub wrap_attributes: bool,
     pub single_quotes: bool,
     pub wrap_content: bool,
+    pub class_wrap_tokens_min: Option<usize>,
+    pub class_wrap_tokens_per_line: usize,
     /// Preferred plugin list for the formatter host.
     pub plugins: Vec<PluginConfig>,
     /// Legacy single-plugin configuration kept for backward compatibility.
@@ -40,6 +42,8 @@ impl Default for FormatterConfig {
             wrap_attributes: false,
             single_quotes: false,
             wrap_content: false,
+            class_wrap_tokens_min: None,
+            class_wrap_tokens_per_line: 1,
             plugins: Vec::new(),
             plugin: PluginConfig::default(),
         }

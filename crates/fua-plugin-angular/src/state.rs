@@ -5,6 +5,9 @@ pub(crate) struct AngularState {
     pub(crate) condition_depth: usize,
     pub(crate) condition_base_indent: usize,
     pub(crate) awaiting_condition_start: bool,
+    pub(crate) capturing_condition: bool,
+    pub(crate) captured_condition: String,
+    pub(crate) first_condition_token: bool,
 }
 
 fn state() -> &'static Mutex<AngularState> {

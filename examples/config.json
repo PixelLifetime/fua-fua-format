@@ -6,7 +6,16 @@
   "wrap_attributes": true,
   "single_quotes": false,
   "wrap_content": true,
+  "class_wrap_tokens_min": 6,
+  "class_wrap_tokens_per_line": 2,
   "plugins": [
+    {
+      "path": "../target/wasm32-wasip1/release/fua_plugin_tailwind.wasm",
+      "options": {
+        "class_wrap_tokens_per_line": 2,
+        "group_blank_lines": true
+      }
+    },
     {
       "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
       "options": {
@@ -14,7 +23,6 @@
         "wrap_conditions_in_parens": true,
         "wrap_ternary": true,
         "ngclass_wrap_entries_min": 2,
-        "class_wrap_tokens_min": 6,
         "indent_condition_groups": true
       }
     }

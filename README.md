@@ -47,7 +47,16 @@ Fua Fua Format supports the following configuration properties directly fed via 
   "wrap_attributes": true,
   "single_quotes": false,
   "wrap_content": true,
+  "class_wrap_tokens_min": 6,
+  "class_wrap_tokens_per_line": 2,
   "plugins": [
+    {
+      "path": "../target/wasm32-wasip1/release/fua_plugin_tailwind.wasm",
+      "options": {
+        "class_wrap_tokens_per_line": 2,
+        "group_blank_lines": true
+      }
+    },
     {
       "path": "../target/wasm32-wasip1/release/fua_plugin_angular.wasm",
       "options": {
@@ -75,6 +84,10 @@ Fua Fua Format supports the following configuration properties directly fed via 
   Convert all HTML standard `"` double-quotes into `'` single-quotes natively (escapes strictly preserved).
 * `wrap_content` *(Boolean, Default: false)*
   If an opening tag breaks into multiple lines, this ensures the internal raw text (or immediate child string) drops symmetrically to the next appropriate line down.
+* `class_wrap_tokens_min` *(Integer, Optional)*
+  Wrap plain `class` attributes when they contain at least this many class tokens.
+* `class_wrap_tokens_per_line` *(Integer, Default: 1)*
+  Maximum number of class tokens emitted per line when a `class` attribute wraps.
 * `plugins` *(Array, Default: empty)*
   Ordered list of optional WASM plugins to load after the default HTML formatter pass.
 * `plugin` *(Object, Legacy)*
@@ -82,11 +95,27 @@ Fua Fua Format supports the following configuration properties directly fed via 
 * `plugins[].options` *(Object, Plugin-specific)*
   Arbitrary JSON options forwarded to the selected plugin on each hook request.
 
+### Tailwind Plugin
+
+`fua-plugin-tailwind` formats plain `class` attributes. It sorts Tailwind utility tokens, groups related utilities with blank lines, and respects the formatter-level `class_wrap_tokens_min` / `class_wrap_tokens_per_line` values. Plugin options can override either class wrapping value:
+
+```json
+{
+  "path": "../target/wasm32-wasip1/release/fua_plugin_tailwind.wasm",
+  "options": {
+    "class_wrap_tokens_min": 6,
+    "class_wrap_tokens_per_line": 2,
+    "group_blank_lines": true
+  }
+}
+```
+
 ## Architecture
 
 Fua Fua Format is split into four workspace crates:
 - `fua-core`: Generic HTML lexer, parser, formatter, plugin host, and formatting engine.
 - `fua-plugin-api`: Stable hook contract shared by the core host and every plugin crate.
+- `fua-plugin-tailwind`: Tailwind class sorting, grouping, and grouped class wrapping.
 - `fua-plugin-angular`: Angular-specific formatting rules compiled to WASM.
 - `cli`: Thin Clap-based command runner for file I/O, config loading, and plugin wiring.
 
@@ -110,4 +139,25 @@ The main responsibilities are separated like this:
   - output/indentation emission,
   - syntax-context helpers.
 - `crates/core/src/plugins.rs`: WASM plugin host and dispatch order.
+- `crates/fua-plugin-tailwind/src/`: Tailwind-specific class token ordering and grouped class emission.
 - `crates/fua-plugin-angular/src/`: Angular-specific attribute wrapping, condition handling, shared expression parsing helpers, response builders, and plugin state.
+
+## Testing
+
+Run these commands from the repository root:
+
+```bash
+# Run all workspace tests at once
+cargo test --workspace
+
+# Run tests for one crate
+cargo test -p fua-core
+cargo test -p fua-plugin-tailwind
+cargo test -p fua-plugin-angular
+cargo test -p cli
+
+# Run a specific test by name
+cargo test -p fua-plugin-angular wraps_conditions_across_config_sweep
+```
+
+Tip: append `-- --nocapture` to see `println!` output during tests.

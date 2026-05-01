@@ -65,14 +65,14 @@ impl FormatSession {
             .map(|parent| syntax_kind_label(parent.kind()))
             .unwrap_or(ROOT_PARENT_KIND);
 
-        HookContext::new(
+        self.with_formatter_context(HookContext::new(
             parent_kind,
             tag_name,
             None,
             self.current_indent,
             self.config.indent_size,
             self.config.use_tabs,
-        )
+        ))
     }
 
     pub(super) fn prepare_tag_token_replacements(&mut self, node: &SyntaxNode) {
@@ -144,17 +144,15 @@ impl FormatSession {
         let tag_name = node_tag_name(parent);
         let previous = token.prev_sibling_or_token();
         let next = token.next_sibling_or_token();
-        let request = HookRequest::token(
-            syntax_kind_label(token.kind()),
-            token.text(),
-            HookContext::new(
+        let context = self
+            .with_formatter_context(HookContext::new(
                 syntax_kind_label(parent.kind()),
                 tag_name.as_deref(),
                 attribute_name,
                 self.current_indent,
                 self.config.indent_size,
                 self.config.use_tabs,
-            )
+            ))
             .with_neighbors(
                 previous
                     .as_ref()
@@ -163,10 +161,18 @@ impl FormatSession {
                 next.as_ref()
                     .map(|element| syntax_kind_label(element.kind())),
                 next.as_ref().and_then(token_text),
-            ),
-        );
+            );
+
+        let request = HookRequest::token(syntax_kind_label(token.kind()), token.text(), context);
 
         self.plugin_host.dispatch(&request)
+    }
+
+    fn with_formatter_context<'a>(&self, context: HookContext<'a>) -> HookContext<'a> {
+        context.with_class_wrapping(
+            self.config.class_wrap_tokens_min,
+            self.config.class_wrap_tokens_per_line,
+        )
     }
 
     fn take_cached_token_replacement(

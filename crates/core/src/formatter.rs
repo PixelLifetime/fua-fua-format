@@ -1,3 +1,4 @@
+mod classes;
 mod content;
 mod context;
 mod hooks;
@@ -246,6 +247,24 @@ mod tests {
     }
 
     #[test]
+    fn wraps_class_tokens_using_configured_tokens_per_line() {
+        let input = r#"<button class="flex flex-col items-center px-4 py-2 text-sm"></button>"#;
+        let config = FormatterConfig {
+            print_width: 200,
+            class_wrap_tokens_min: Some(6),
+            class_wrap_tokens_per_line: 2,
+            ..FormatterConfig::default()
+        };
+
+        let output = format_with_config(input, config);
+
+        assert_eq!(
+            output,
+            "\n<button\n  class=\"\n    flex flex-col\n    items-center px-4\n    py-2 text-sm\n  \"\n>\n</button>"
+        );
+    }
+
+    #[test]
     fn preserves_script_content_verbatim() {
         let input = r#"<script>
   const sample = {
@@ -300,5 +319,210 @@ mod tests {
             output,
             "\n<div>\n  <script>\n    const sample = {\n      title: \"Keep JS raw\",\n      nested: { value: 123 }\n    };\n\n    function noop() {\n      return sample;\n    }\n  </script>\n\n  <style>\n    .custom-debug-box {\n      outline: 2px solid hotpink;\n    }\n  </style>\n</div>"
         );
+    }
+
+    struct ClassWrapScenario {
+        input_tokens: &'static [&'static str],
+        expected_token_order: &'static [&'static str],
+        tokens_per_line: usize,
+        indent_size: usize,
+        use_tabs: bool,
+    }
+
+    fn join_chunks(tokens: &[&str], tokens_per_line: usize) -> Vec<String> {
+        tokens
+            .chunks(tokens_per_line.max(1))
+            .map(|chunk| chunk.join(" "))
+            .collect()
+    }
+
+    fn indent(depth: usize, indent_size: usize, use_tabs: bool) -> String {
+        if use_tabs {
+            "\t".repeat(depth)
+        } else {
+            " ".repeat(depth * indent_size)
+        }
+    }
+
+    fn generate_expected_button_with_class(lines: &[String], indent_size: usize, use_tabs: bool) -> String {
+        let tag_indent = indent(1, indent_size, use_tabs);
+        let class_indent = indent(2, indent_size, use_tabs);
+        let close_quote_indent = tag_indent.clone();
+
+        let mut out = String::from("\n<button\n");
+        out.push_str(&tag_indent);
+        out.push_str("class=\"\n");
+        for line in lines {
+            out.push_str(&class_indent);
+            out.push_str(line);
+            out.push('\n');
+        }
+        out.push_str(&close_quote_indent);
+        out.push_str("\"\n>\n</button>");
+        out 
+    }
+
+    fn run_class_wrap_scenario(s: ClassWrapScenario) {
+        let input = format!(r#"<button class="{}"></button>"#, s.input_tokens.join(" "));
+        let config = FormatterConfig {
+            print_width: 200,
+            class_wrap_tokens_min: Some(1),
+            class_wrap_tokens_per_line: s.tokens_per_line,
+            indent_size: s.indent_size,
+            use_tabs: s.use_tabs,
+            ..FormatterConfig::default()
+        };
+        let actual = format_with_config(&input, config);
+        let generated_lines = join_chunks(s.expected_token_order, s.tokens_per_line);
+        let expected =
+            generate_expected_button_with_class(&generated_lines, s.indent_size, s.use_tabs);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn generative_class_wrapping_scenarios() {
+        let unsorted = &["py-2", "flex", "items-center", "text-sm", "flex-col", "px-4"];
+
+        for tokens_per_line in 1..=3 {
+            run_class_wrap_scenario(ClassWrapScenario {
+                input_tokens: unsorted,
+                expected_token_order: unsorted,
+                tokens_per_line,
+                indent_size: 2,
+                use_tabs: false,
+            });
+        }
+    }
+
+    #[test]
+    fn generative_class_wrapping_with_tabs() {
+        let unsorted = &["items-center", "text-sm", "py-2", "flex-col", "px-4", "flex"];
+
+        run_class_wrap_scenario(ClassWrapScenario {
+            input_tokens: unsorted,
+            expected_token_order: unsorted,
+            tokens_per_line: 2,
+            indent_size: 4,
+            use_tabs: true,
+        });
+    }
+
+    #[test]
+    fn generative_class_wrapping_with_non_divisible_chunk_size() {
+        let unsorted = &["w-full", "flex", "items-center", "justify-center", "px-4"];
+
+        run_class_wrap_scenario(ClassWrapScenario {
+            input_tokens: unsorted,
+            expected_token_order: unsorted,
+            tokens_per_line: 4,
+            indent_size: 2,
+            use_tabs: false,
+        });
+    }
+
+    #[test]
+    fn generative_class_wrapping_for_deep_indent_context() {
+        // Realistic template payload: class wrapping inside nested element trees should
+        // still chunk lines correctly regardless of nesting depth in the output.
+        let input_tokens = &[
+            "grid",
+            "grid-cols-12",
+            "gap-4",
+            "md:grid-cols-6",
+            "lg:grid-cols-4",
+            "items-start",
+            "w-full",
+        ];
+        let generated_lines = join_chunks(input_tokens, 3);
+        let expected = generate_expected_button_with_class(&generated_lines, 2, false);
+        let input = format!(r#"<button class="{}"></button>"#, input_tokens.join(" "));
+        let actual = format_with_config(
+            &input,
+            FormatterConfig {
+                print_width: 200,
+                class_wrap_tokens_min: Some(1),
+                class_wrap_tokens_per_line: 3,
+                indent_size: 2,
+                use_tabs: false,
+                ..FormatterConfig::default()
+            },
+        );
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn generative_class_wrapping_respects_min_threshold_toggle() {
+        let tokens = &["flex", "items-center", "gap-2"];
+        let input = format!(r#"<button class="{}"></button>"#, tokens.join(" "));
+        let config_no_wrap = FormatterConfig {
+            print_width: 200,
+            class_wrap_tokens_min: Some(10),
+            class_wrap_tokens_per_line: 2,
+            ..FormatterConfig::default()
+        };
+        let not_wrapped = format_with_config(&input, config_no_wrap);
+        assert_eq!(not_wrapped, format!(r#"<button class="{}"></button>"#, tokens.join(" ")));
+
+        let config_wrap = FormatterConfig {
+            print_width: 200,
+            class_wrap_tokens_min: Some(1),
+            class_wrap_tokens_per_line: 2,
+            ..FormatterConfig::default()
+        };
+        let wrapped = format_with_config(&input, config_wrap);
+        let expected_lines = join_chunks(tokens, 2);
+        let expected = generate_expected_button_with_class(&expected_lines, 2, false);
+        assert_eq!(expected, wrapped);
+    }
+
+    fn generate_button_block(tokens: &[&str], tokens_per_line: usize, indent_size: usize) -> String {
+        let line_indent = " ".repeat(indent_size * 2);
+        let class_indent = " ".repeat(indent_size * 3);
+        let close_quote_indent = line_indent.clone();
+        let class_lines = tokens
+            .chunks(tokens_per_line.max(1))
+            .map(|chunk| chunk.join(" "))
+            .collect::<Vec<_>>();
+
+        let mut out = String::from("  <button\n");
+        out.push_str(&line_indent);
+        out.push_str("class=\"\n");
+        for line in class_lines {
+            out.push_str(&class_indent);
+            out.push_str(&line);
+            out.push('\n');
+        }
+        out.push_str(&close_quote_indent);
+        out.push_str("\"\n  >\n  </button>");
+        out
+    }
+
+    #[test]
+    fn generative_chunk_formats_multiple_wrapped_nodes_consistently() {
+        let first = &["flex", "items-center", "justify-center", "px-4"];
+        let second = &["grid", "grid-cols-2", "gap-2"];
+        let input = format!(
+            "<section><button class=\"{}\"></button><button class=\"{}\"></button></section>",
+            first.join(" "),
+            second.join(" ")
+        );
+        let config = FormatterConfig {
+            print_width: 200,
+            class_wrap_tokens_min: Some(1),
+            class_wrap_tokens_per_line: 2,
+            indent_size: 2,
+            use_tabs: false,
+            ..FormatterConfig::default()
+        };
+
+        let actual = format_with_config(&input, config);
+        let expected = format!(
+            "\n<section>\n{}\n{}\n</section>",
+            generate_button_block(first, 2, 2),
+            generate_button_block(second, 2, 2)
+        );
+
+        assert_eq!(expected, actual);
     }
 }

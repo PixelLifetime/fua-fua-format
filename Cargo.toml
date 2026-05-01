@@ -3,9 +3,11 @@ members = [
     "crates/cli",
     "crates/core",
     "crates/fua-plugin-api",
+    "crates/fua-plugin-tailwind",
     # extism-pdk uses WASM-only host imports and cannot link for native targets.
     # This crate is in the workspace so it can use workspace deps, but is
-    # excluded from the default build.  Compile it explicitly with:
+    # excluded from the default build.  Compile plugins explicitly with:
+    #   cargo build -p fua-plugin-tailwind --target wasm32-wasip1 --release
     #   cargo build -p fua-plugin-angular --target wasm32-wasip1 --release
     "crates/fua-plugin-angular",
 ]

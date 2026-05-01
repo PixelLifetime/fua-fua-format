@@ -1,368 +1,836 @@
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<title>Angular + Tailwind Formatter Test Cases</title>
-	</head>
-	<body class="bg-slate-50 text-slate-900">
-		<app-root class="block min-h-screen">
-			<main class="mx-auto max-w-5xl p-6 space-y-8">
-				<section
-					class="
-						rounded-2xl
-						bg-white
-						shadow-sm
-						ring-1
-						ring-slate-200
-						p-6
-					"
-				>
-					<header class="flex items-center justify-between gap-4">
-						<div>
-							<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
-							<p class="mt-1 text-sm text-slate-500">Tailwind classes + Angular annotations</p>
-						</div>
+@if (this.audioCollectionEditService.editableCollection) {
+	<!-- Main collection container -->
+	<main
+		class="flex bg-center bg-cover rounded-xl"
+		[ngStyle]="
+			(
+				   this.imageUrl
+				&& !this.editingMode
+				&& this.audioCollectionEditService.editableCollection.imageId !== '00000000-0000-0000-0000-000000000000'
+			)
+			? {'background-image': this.getImageUrl()}
+			: {}"
+	>
+		<div
+			class="
+				flex flex-col
+				justify-center
 
-						<button
-							class="
-								inline-flex
-								items-center
-								rounded-xl
-								bg-sky-600
-								px-4
-								py-2
-								text-sm
-								font-medium
-								text-white
-								hover:bg-sky-700
-								disabled:opacity-50
-								disabled:cursor-not-allowed
-							"
-							[disabled]="isSaving"
-							(click)="save()"
-						>
-							Save
+				p-4
+
+				w-full
+
+				rounded-xl
+			"
+			[ngClass]="{'backdrop-brightness-50': this.imageUrl}"
+		>
+			<!-- Grid Layout Container -->
+			<div class="grid grid-cols-4 gap-8 w-full h-fit">
+				<!-- Collection Info Area (3/4 width - col-span-3) -->
+				<div
+					class="
+						flex flex-col
+						col-span-3
+
+						p-6
+
+						bg-tertiary-lighter-5% rounded-lg
+						border-2
+					"
+					[ngClass]="{
+						'border-accent':
+							(
+								   this.hasNameChanges
+								|| this.hasDescriptionChanges
+								|| this.hasImageChanges
+							),
+						'border-quaternary':
+							(
+								!(
+									   this.hasNameChanges
+									|| this.hasDescriptionChanges
+									|| this.hasImageChanges
+								)
+							)
+						}"
+				>
+					<div class="absolute top-4 right-4 z-10">
+						<button class="btn-accent btn-default" (click)="this.saveAllChanges()">
+							
+							{{ 'submitChanges' | translate }}
 						</button>
-					</header>
-				</section>
-
-				<!-- Angular control flow annotations -->
-				@if (user$ | async; as user) {
-					<section class="grid gap-4 md:grid-cols-2">
-						<article
-							class="
-								rounded-2xl
-								border
-								border-slate-200
-								bg-white
-								p-5
-								shadow-sm
-							"
-						>
-							<h2 class="text-lg font-semibold">Profile</h2>
-
-							<dl class="mt-4 space-y-3 text-sm">
-								<div class="flex items-start justify-between gap-4">
-									<dt class="text-slate-500">Name</dt>
-									<dd class="font-medium">{{ user.name }}</dd>
-								</div>
-
-								<div class="flex items-start justify-between gap-4">
-									<dt class="text-slate-500">Role</dt>
-									<dd class="font-medium">{{ user.role }}</dd>
-								</div>
-							</dl>
-						</article>
-
-						<article
-							class="
-								rounded-2xl
-								border
-								border-slate-200
-								bg-white
-								p-5
-								shadow-sm
-							"
-						>
-							<h2 class="text-lg font-semibold">Actions</h2>
-
-							@if (user.permissions.canEdit) {
-								<button
-									class="
-										mt-4
-										inline-flex
-										items-center
-										rounded-xl
-										bg-emerald-600
-										px-4
-										py-2
-										text-sm
-										font-medium
-										text-white
-										hover:bg-emerald-700
-									"
-									(click)="edit(user)"
-								>
-									Edit profile
-								</button>
-							} @else {
-								<button
-									class="
-										mt-4
-										inline-flex
-										items-center
-										rounded-xl
-										bg-slate-200
-										px-4
-										py-2
-										text-sm
-										font-medium
-										text-slate-900
-									"
-									disabled
-								>
-									Read only
-								</button>
-							}
-						</article>
-					</section>
-				} @else {
-					<section
-						class="
-							rounded-2xl
-							border
-							border-dashed
-							border-slate-300
-							bg-white
-							p-6
-							text-slate-500
-						"
-					>
-						Loading user...
-					</section>
-				}
-
-				<!-- Angular @for annotation -->
-				<section
-					class="
-						rounded-2xl
-						bg-white
-						p-6
-						shadow-sm
-						ring-1
-						ring-slate-200
-					"
-				>
-					<div class="flex items-center justify-between gap-4">
-						<h2 class="text-lg font-semibold">Tasks</h2>
-						<span
-							class="
-								rounded-full
-								bg-slate-100
-								px-3
-								py-1
-								text-xs
-								font-medium
-								text-slate-600
-							"
-						>
-
-							{{ tasks.length }} items
-						</span>
 					</div>
 
-					<div class="mt-5 grid gap-4 md:grid-cols-2">
-						@for (task of tasks; track task.id) {
-							<article
-								class="
-									rounded-2xl
-									border
-									border-slate-200
-									p-4
-									transition
-									hover:shadow-md
-								"
-							>
-								<div class="flex items-start justify-between gap-4">
-									<h3 class="font-medium text-slate-900">{{ task.title }}</h3>
-									<span
-										class="rounded-full px-2.5 py-1 text-xs font-medium"
-										[class.bg-emerald-100]="task.done"
-										[class.text-emerald-700]="task.done"
-										[class.bg-amber-100]="!task.done"
-										[class.text-amber-700]="!task.done"
-									>
-
-										{{ task.done ? 'Done' : 'Open' }}
-									</span>
-								</div>
-
-								<p class="mt-3 text-sm leading-6 text-slate-600">{{ task.description }}</p>
-
-								<div class="mt-4 flex flex-wrap gap-2">
-									@for (label of task.labels; track label) {
-										<span
-											class="
-												rounded-full
-												bg-slate-100
-												px-2.5
-												py-1
-												text-xs
-												text-slate-600
-											"
-										>
-
-											{{ label }}
-										</span>
-									}
-									@empty {
-										<span class="text-xs text-slate-400">No labels</span>
-									}
-								</div>
-							</article>
-						}
-						@empty {
+					<!-- Success Message -->
+					@if (showSaveSuccess) {
+						<div class="absolute right-4 z-10 -top-3">
 							<div
 								class="
-									rounded-2xl
-									border
-									border-dashed
-									border-slate-300
-									p-6
-									text-sm
-									text-slate-500
+									flex gap-2
+									items-center
+
+									px-4 py-1.5
+
+									text-sm text-white
+
+									bg-green-500 rounded-lg
+									shadow-md
+
+									animate-fadeIn
 								"
 							>
-								No tasks found
+								<i class="fa-check fa-solid"></i>
+								<span>Saved successfully</span>
+							</div>
+						</div>
+					}
+
+					<div class="flex justify-between w-full">
+						@if (this.audioCollection) {
+							<div class="flex items-center space-x-2">
+								<i
+									class="cursor-pointer fa-heart fa-regular"
+									[ngClass]="{
+										'text-secondary': this.isCollectionLiked,
+										'text-quinary-darker-5%': !this.isCollectionLiked
+										}"
+									(click)="this.likeAudioCollection()"
+									(keyup.enter)="this.likeAudioCollection()"
+									tabindex="0"
+								>
+								</i>
+
+								<p class="text-md text-quinary-darker-5% cursor-pointer">
+									
+									{{ this.audioCollection.likes }}
+								</p>
+							</div>
+
+							<div class="flex items-center space-x-2">
+								<i class="text-quinary-darker-5% fa-eye fa-solid"></i>
+								<p class="text-md text-quinary-darker-5% cursor-pointer">{{ this.totalPlays }}</p>
 							</div>
 						}
 					</div>
-				</section>
 
-				<!-- Angular @switch annotation -->
-				<section
-					class="
-						rounded-2xl
-						bg-white
-						p-6
-						shadow-sm
-						ring-1
-						ring-slate-200
-					"
-				>
-					@switch (status) {
-						@case ('idle') {
-							<p class="text-sm text-slate-600">Status: idle</p>
-						}
-						@case ('loading') {
-							<p class="text-sm text-sky-600">Status: loading</p>
-						}
-						@case ('success') {
-							<p class="text-sm text-emerald-600">Status: success</p>
-						}
-						@default {
-							<p class="text-sm text-rose-600">Status: unknown</p>
-						}
-					}
-				</section>
-
-				<!-- Tailwind-heavy markup with messy spacing and multiline bindings -->
-				<section
-					class="rounded-2xl bg-slate-900 p-6 text-slate-50 shadow-lg"
-					[class.opacity-60]="isDisabled"
-					[class.pointer-events-none]="isDisabled"
-				>
-					<div class="flex items-center gap-3">
-						<div class="h-3 w-3 rounded-full bg-emerald-400"></div>
-						<h2 class="text-lg font-semibold">Live preview</h2>
-					</div>
-
-					<div class="mt-4 grid gap-3 sm:grid-cols-2">
-						<div class="rounded-xl bg-slate-800 p-4">
-							<p class="text-sm text-slate-300">Email</p>
-							<p class="mt-1 font-medium">{{ user.email }}</p>
+					<!-- Top Row: Name and Controls -->
+					<div class="flex justify-between items-start mb-4">
+						<!-- Name Field -->
+						<div class="flex-1 text-white">
+							@if (this.isNameEditing) {
+								<input
+									#nameInput
+									type="text"
+									[ngModel]="this.audioCollectionEditService.editableCollection.name"
+									(input)="handleNameChange($event)"
+									class="w-full font-semibold text-3xl bg-transparent outline-none"
+									placeholder="Enter collection name"
+									(blur)="finishNameEdit()"
+								/>
+							} @else {
+								<div class="relative flex items-center">
+									<h2
+										class="font-semibold text-3xl truncate cursor-pointer"
+										(click)="startNameEdit()"
+										[title]="this.audioCollectionEditService.editableCollection.name || 'Enter collection name'"
+										(keyup.enter)="startNameEdit()"
+										tabindex="0"
+									>
+										
+										{{ this.audioCollectionEditService.editableCollection.name || 'Enter collection name' }}
+									</h2>
+									@if (this.hasNameChanges) {
+										<span class="ml-2 text-accent" title="Name has unsaved changes">
+											<i class="fa-circle-exclamation fa-solid"></i>
+										</span>
+									}
+								</div>
+							}
 						</div>
 
-						<div class="rounded-xl bg-slate-800 p-4">
-							<p class="text-sm text-slate-300">Plan</p>
-							<p class="mt-1 font-medium">{{ user.plan }}</p>
+						<!-- Control Buttons -->
+						<div class="flex space-x-4">
+							<!-- Play/Stop Button -->
+							<button
+								class="flex flex-col gap-1 items-center group"
+								tabindex="0"
+								[disabled]="!this.audioPlayerService.loaded"
+								[class.opacity-50]="!this.audioPlayerService.loaded"
+								(click)="this.toggleAmbiencePreview()"
+							>
+								@if (this.isAmbiencePreviewPlaying) {
+									<i
+										class="
+											text-3xl text-white
+
+											transition-all group-hover:scale-110
+
+											fa-circle-stop fa-regular
+										"
+									>
+									</i>
+									<span class="text-gray-300 text-xs">Stop</span>
+								} @else {
+									<i
+										class="
+											text-3xl text-white
+
+											transition-all group-hover:scale-110
+
+											fa-circle-play fa-regular
+										"
+									>
+									</i>
+									<span class="text-gray-300 text-xs">Play</span>
+								}
+							</button>
+
+							<!-- Generate Button -->
+							<button
+								(click)="this.generateAmbience()"
+								class="flex flex-col gap-1 items-center group"
+								[disabled]="this.isLoadingAmbience"
+								[class.opacity-50]="this.isLoadingAmbience"
+							>
+								<i
+									class="
+										text-3xl text-white
+
+										transition-all group-hover:scale-110
+
+										fa-solid fa-wand-magic-sparkles
+									"
+								>
+								</i>
+								<span class="text-gray-300 text-xs">Generate</span>
+							</button>
+
+							<!-- Download Button - Only show when ambience is generated -->
+							@if (
+								   this.generatedAmibienceUrl
+								&& !this.isLoadingAmbience
+							) {
+								<button (click)="this.export()" class="flex flex-col gap-1 items-center group">
+									<i
+										class="
+											text-3xl text-white
+
+											transition-all group-hover:scale-110
+
+											fa-download fa-solid
+										"
+									>
+									</i>
+									<span class="text-gray-300 text-xs">Download</span>
+								</button>
+							}
 						</div>
 					</div>
 
-					<div class="mt-4 flex flex-wrap gap-2">
-						<a
-							href="/settings"
-							class="
-								inline-flex
-								items-center
-								rounded-xl
-								bg-slate-100
-								px-4
-								py-2
-								text-sm
-								font-medium
-								text-slate-900
-								hover:bg-white
-							"
-						>
-							Settings
-						</a>
+					<!-- Mid Row: Description -->
+					<div class="relative flex-1 mb-4">
+						@if (this.isDescriptionEditing) {
+							<textarea
+								#descriptionInput
+								[ngModel]="this.audioCollectionEditService.editableCollection.description"
+								(input)="handleDesciptionChange($event)"
+								class="
+									overflow-y-auto
 
-						<a
-							href="/billing"
-							class="
-								inline-flex
-								items-center
-								rounded-xl
-								bg-slate-700
-								px-4
-								py-2
-								text-sm
-								font-medium
-								text-white
-								hover:bg-slate-600
-							"
-						>
-							Billing
-						</a>
+									w-full h-24
+
+									text-gray-200 text-lg
+
+									bg-transparent outline-none
+
+									resize-none
+								"
+								placeholder="Enter collection description"
+								(blur)="finishDescriptionEdit()"
+							>
+							</textarea>
+						} @else {
+							<div class="relative overflow-y-auto h-24">
+								<p
+									class="text-gray-200 text-lg break-words cursor-pointer"
+									(click)="startDescriptionEdit()"
+									(keyup.enter)="startDescriptionEdit()"
+									tabindex="0"
+								>
+									
+									{{ this.audioCollectionEditService.editableCollection.description || 'Enter collection description' }}
+								</p>
+								@if (this.hasDescriptionChanges) {
+									<span
+										class="absolute top-0 right-0 mr-1 text-accent"
+										title="Description has unsaved changes"
+									>
+										<i class="fa-circle-exclamation fa-solid"></i>
+									</span>
+								}
+							</div>
+						}
 					</div>
-				</section>
 
-				<!-- Messy / edge cases -->
-				<div
-					class="
-						mt-10
-						rounded-2xl
-						border
-						border-slate-200
-						bg-white
-						p-4
-					"
-					[attr.data-id]=" user?.id "
-					(mouseenter)="hover(user)"
-				>
-					<p class="text-sm text-slate-500">This block intentionally has awkward spacing.</p>
+					<!-- Bottom Row: Waveform or Loading Area -->
+					<div class="flex flex-col gap-3 h-24">
+						<!-- Loading Progress or Waveform -->
+						@if (this.isLoadingAmbience) {
+							<div class="flex flex-col gap-2 w-full">
+								<p class="text-lg text-white">{{ this.getLoadingStage() }}</p>
+								<div class="w-full h-2">
+									<app-progressbar
+										[progress]="this.ambienceLoadingProgress / 5"
+										[buffer]="
+											(
+												   this.ambienceLoadingProgress === 5
+												|| this.ambienceLoadingProgress === 0
+											)
+											? this.ambienceLoadingProgress / 5
+											: this.ambienceLoadingProgress / 5 + 0.1"
+										[type]="'linear-buffer'"
+									>
+									</app-progressbar>
+								</div>
+							</div>
+						} @else {
+							<div class="relative">
+								<!-- Empty state when no ambience -->
+								@if (!this.generatedAmibienceUrl) {
+									<div
+										class="
+											flex flex-col
+											justify-center items-center
+
+											w-full h-24
+
+											bg-tertiary-lighter-10% rounded-lg
+											border border-dashed
+											border-gray-600
+										"
+									>
+										<p class="text-gray-400">
+											<i class="mr-2 fa-solid fa-wave-square"></i>
+											Click "Generate" to create your ambience
+										</p>
+									</div>
+								}
+							</div>
+						}
+						<!-- Actual waveform when generated -->
+						<div #waveform class="w-full h-24" [class.hidden]="!this.generatedAmibienceUrl"></div>
+					</div>
 				</div>
 
-				<!-- Keep raw content as raw -->
-				<script>
-					const sample = {
-					  title: "Keep JS raw",
-					  nested: { value: 123 }
-					};
+				<!-- Image Upload Area (1/4 width - col-span-1) -->
+				<div
+					dropZone
+					(filesDropped)="this.onImageFileDropped($event)"
+					[ngClass]="{
+						'border-accent': this.hasImageChanges,
+						'border-quaternary': !this.hasImageChanges
+						}"
+					class="
+						relative
 
-					function noop() {
-					  return sample;
-					}
-				</script>
+						flex flex-col
+						col-span-1 justify-center
+						items-center
 
-				<style>
-					.custom-debug-box {
-					  outline: 2px solid hotpink;
+						bg-tertiary-lighter-5% rounded-lg
+						border-2
+					"
+				>
+					<!-- Current Image Preview or Upload UI -->
+					<div
+						class="
+							flex flex-col
+							justify-center items-center
+
+							w-full h-full
+						"
+					>
+						<!-- Show image if exists -->
+						@if (
+							   this.imageUrl
+							&& this.audioCollectionEditService.editableCollection.imageId !== '00000000-0000-0000-0000-000000000000'
+						) {
+							<div class="relative w-full h-full">
+								<img
+									[src]="this.imageUrl"
+									class="object-cover w-full h-full rounded-lg"
+									alt="Collection image"
+								/>
+								<div
+									class="
+										absolute inset-0
+
+										flex flex-col
+										justify-center items-center
+
+										bg-black bg-opacity-50
+										rounded-lg opacity-0
+										hover:opacity-100
+
+										transition-opacity
+									"
+								>
+									<i class="mb-2 text-white text-xl fa-cloud-arrow-up fa-solid"></i>
+									<p class="mb-2 text-sm text-white">Replace image</p>
+									<label
+										for="file"
+										class="
+											px-3 py-1
+
+											text-white text-xs
+
+											bg-primary hover:bg-primary-lighter
+											rounded-full
+
+											cursor-pointer
+
+											btn-default
+										"
+									>
+										Choose
+										file
+									</label>
+								</div>
+							</div>
+						} @else {
+							<!-- Upload UI if no image -->
+							<div
+								class="
+									flex flex-col
+									justify-center items-center
+
+									p-4
+
+									h-full
+
+									text-white
+								"
+							>
+								<i class="mb-4 text-2xl text-danger fa-cloud-arrow-up fa-solid"></i>
+								<p class="mb-3 text-center text-sm">{{ 'dragAndDropFiles' | translate }}</p>
+
+								<div class="flex justify-center items-center my-1 w-full">
+									<hr class="w-1/3 border-quinary" />
+									<span class="px-2 text-quinary text-xs">or</span>
+									<hr class="w-1/3 border-quinary" />
+								</div>
+
+								<label
+									for="file"
+									class="
+										mt-3 px-4
+										py-1.5
+
+										text-sm
+
+										transition-colors
+
+										btn-default btn-secondary
+									"
+								>
+									Choose
+									file
+								</label>
+								<p class="mt-3 text-quinary text-xs">Max size: 16MB</p>
+							</div>
+						}
+					</div>
+
+					<input
+						(change)="this.handleImageFileUpload($event)"
+						accept=".png,.jpg,.jpeg,.hvc"
+						type="file"
+						name="file"
+						id="file"
+						class="hidden"
+					/>
+
+					<!-- Mark as changed if needed -->
+					@if (this.hasImageChanges) {
+						<div class="absolute top-2 right-2 text-accent">
+							<i class="fa-circle-exclamation fa-solid"></i>
+						</div>
 					}
-				</style>
-			</main>
-		</app-root>
-	</body>
-</html>
+				</div>
+
+				<!-- Timeline Panel (3/4 width - col-span-3) -->
+				<div
+					class="
+						relative
+
+						flex flex-col
+						col-span-3 gap-8
+
+						p-6
+
+						bg-tertiary-lighter-5% rounded-lg
+						border-2
+					"
+					[ngClass]="{
+						'border-quaternary':
+							(
+								   !this.audioCollectionEditService.changes['presets']
+								|| !this.audioCollectionEditService.changes['audioList']
+								|| !this.audioCollectionEditService.changes['timeline']
+							),
+						'border-accent':
+							(
+								   this.audioCollectionEditService.changes['presets']
+								&& this.audioCollectionEditService.changes['audioList']
+								&& this.audioCollectionEditService.changes['timeline']
+							)
+						}"
+				>
+					<!-- Main Panel Save Button (absolute position) -->
+					@if (
+						   this.audioCollectionEditService.changes['presets']
+						&& this.audioCollectionEditService.changes['audioList']
+						&& this.audioCollectionEditService.changes['timeline']
+					) {
+						<button
+							(click)="saveAllChanges()"
+							class="
+								absolute right-3
+								z-10
+
+								flex items-center
+								space-x-2
+
+								px-3 py-1.5
+
+								text-sm
+
+								-top-3 btn-accent
+								btn-default
+							"
+						>
+							<i class="mr-2 fa-save fa-solid"></i>
+							<span>Save All Changes</span>
+						</button>
+					}
+
+					<!-- Section Header -->
+					<div
+						class="
+							flex justify-between
+							items-center
+
+							pb-4
+
+							border-b border-tertiary-lighter-20%
+						"
+					>
+						<div class="flex flex-col">
+							<h3 class="font-semibold text-quinary text-xl">Timeline & Audio Groups</h3>
+							<p class="text-quinary-darker-10% text-sm">Manage your video timeline and audio tracks</p>
+						</div>
+					</div>
+
+					<!-- Audio Groups Panel -->
+					<div
+						class="
+							relative
+
+							flex flex-col
+							gap-4
+
+							p-4
+
+							bg-tertiary-lighter-10% rounded-lg
+							border
+						"
+						[ngClass]="{
+							'border-accent':
+								(
+									   this.audioCollectionEditService.changes['presets']
+									|| this.audioCollectionEditService.changes['audioList']
+								),
+							'border-tertiary-lighter-20%':
+								(
+									   !this.audioCollectionEditService.changes['presets']
+									&& !this.audioCollectionEditService.changes['audioList']
+								)
+							}"
+					>
+						<!-- Presets Component -->
+						<app-presets
+							[presets]="this.audioCollectionEditService.editableCollection.presets"
+							[selectedPresetId]="this.audioCollectionEditService.selectedPreset!.id"
+							[audioList]="this.audioCollectionEditService.editableCollection.audioList"
+							[originalAudioCollection]="this.audioCollection"
+							[canSave]="!this.hasAudiosCountChanges()"
+							(presetAdd)="this.addPreset()"
+							(presetSave)="this.savePresetChanges()"
+						>
+						</app-presets>
+
+						<!-- Presets Save Button (absolute position) -->
+						@if (
+							   this.audioCollectionEditService.changes['presets']
+							&& !this.audioCollectionEditService.changes['audioList']
+						) {
+							<button
+								(click)="savePresetChanges()"
+								class="
+									absolute top-4
+									right-4
+
+									flex items-center
+									space-x-2
+
+									px-3 py-1.5
+
+									text-sm
+
+									btn-accent btn-default
+								"
+							>
+								<i class="mr-1 fa-save fa-solid"></i>
+								<span>Save Preset Changes</span>
+							</button>
+						}
+
+						<!-- Audio Groups Component -->
+						<app-audio-groups
+							[audioGroups]="this.audioCollectionEditService.editableCollection.audioList"
+							[activeAudioGroupId]="activeAudioGroupId"
+							(addAudioGroup)="addEmptyAudioGroup()"
+							(saveAudioGroupChanges)="saveAudioGroupChanges()"
+							(setActiveAudioGroup)="setActiveAudioGroup($event)"
+							(audioVolumeChange)="handleAudioVolumeChange($event)"
+							(audioMuteChange)="handleAudioMuteChange($event)"
+							(audioPlaybackOffsetChange)="handleAudioPlaybackOffsetChange($event)"
+							(audioProbabilityChange)="handleAudioProbabilityChange($event)"
+							(deleteAudioGroup)="deleteAudioGroupFromCollection($event)"
+							(deleteAudioFile)="deleteAudioFileFromCollection($event)"
+							(nameChange)="handleGroupNameChange($event)"
+							(audioGroupRefsChange)="handleAudioGroupRefsChange($event)"
+						>
+						</app-audio-groups>
+					</div>
+
+					<div
+						class="
+							relative
+
+							flex flex-col
+							gap-4
+
+							p-4
+
+							bg-tertiary-lighter-10% rounded-lg
+							border
+						"
+						[ngClass]="{
+							'border-accent': this.audioCollectionEditService.changes['timeline'],
+							'border-tertiary-lighter-20%': !this.audioCollectionEditService.changes['timeline']
+							}"
+					>
+						<!-- Timeline Save Button (absolute position) -->
+						@if (
+							   this.audioCollectionEditService.changes['timeline']
+							&& !this.audioCollectionEditService.changes['presets']
+							&& !this.audioCollectionEditService.changes['audioList']
+						)
+						{
+							<button
+								(click)="saveTimelineChanges()"
+								class="
+									absolute right-3
+									z-10
+
+									flex items-center
+									space-x-2
+
+									px-3 py-1.5
+
+									text-sm
+
+									-top-3 btn-accent
+									btn-default
+								"
+							>
+								<i class="mr-1 fa-save fa-solid"></i>
+								<span>Save Timeline Changes</span>
+							</button>
+						}
+
+						<!-- Video Preview and Timeline Container -->
+						<app-timeline
+							(timelineChange)="handleTimelineChange($event)"
+							[timeline]="this.audioCollectionEditService.editableCollection!.timeline"
+							[timelineLength]="120000"
+						>
+						</app-timeline>
+					</div>
+
+					<button class="btn-accent btn-default" (click)="this.logChanges()">Log Changes</button>
+				</div>
+
+				<!-- Audio Library Panel (1/4 width - col-span-1) -->
+				<div
+					class="
+						flex flex-col
+						col-span-1 gap-4
+
+						p-6
+
+						bg-tertiary-lighter-5% rounded-lg
+						border-2 border-quaternary
+					"
+				>
+					<!-- Library Header -->
+					<div class="flex flex-col gap-2">
+						<h3 class="font-semibold text-quinary text-xl">Audio Library</h3>
+						<p class="text-quinary-darker-10% text-sm">
+							@if (activeAudioGroupId) {
+								Adding audio to selected group
+							} @else {
+								Search and add audio files to your collection
+							}
+						</p>
+					</div>
+
+					<!-- Search Input -->
+					<div class="flex w-full text-quinary group">
+						<input
+							type="text"
+							placeholder="Search"
+							class="
+								w-5/6
+
+								rounded-r-none rounded-xl
+								border-r-0
+
+								input-default input-primary
+							"
+							[(ngModel)]="this.searchQuery"
+							(ngModelChange)="this.initiateSearch()"
+							(keyup.enter)="this.initiateSearch()"
+						/>
+						<div
+							class="
+								flex justify-center
+								items-center
+
+								w-1/6
+
+								bg-primary-lighter group-focus-within:bg-primary-lighter-10%
+								rounded-r-lg
+
+								cursor-pointer
+							"
+							(click)="this.initiateSearch()"
+							(keyup.enter)="this.initiateSearch()"
+							tabindex="0"
+						>
+							<i class="fa-magnifying-glass fa-solid"></i>
+						</div>
+					</div>
+
+					<!-- Search Results Panel -->
+					<div
+						class="
+							flex flex-col
+
+							p-4
+
+							h-full
+
+							bg-tertiary-lighter-10% rounded-lg
+							border border-tertiary-lighter-20%
+						"
+					>
+						<div class="flex justify-between items-center mb-4">
+							<div class="flex gap-2 items-center">
+								<h4 class="font-medium text-lg text-quinary">Results</h4>
+							</div>
+						</div>
+
+						<!-- Search Results List -->
+						<pixli-scroll-view
+							visibilityState="always"
+							class="
+								overflow-hidden
+
+								py-2
+
+								w-full h-full
+
+								bg-tertiary-lighter-5% rounded-lg
+							"
+						>
+							@if (isLoadingSearchedAudioCollections) {
+								<!-- Loading Skeletons -->
+								<div class="flex flex-col gap-3">
+									@for (skeleton of this.repeatSkeleton; track skeleton) {
+										<app-audio-file-card-skeleton></app-audio-file-card-skeleton>
+									}
+								</div>
+							} @else {
+								@if (
+									   this.searchedAudioFiles
+									&& this.searchedAudioFiles.length > 0
+								) {
+									<!-- Audio Files List -->
+									<div class="flex flex-col gap-2 px-2">
+										@for (audioFile of this.searchedAudioFiles; track audioFile) {
+											<app-audio-file-card [audioFile]="audioFile">
+												@if (activeAudioGroupId) {
+													<button
+														toolbar-right
+														tabindex="0"
+														(click)="this.addAudioToCollection(audioFile.audioMetadata.audioId, activeAudioGroupId)"
+														(keyup.enter)="this.addAudioToCollection(audioFile.audioMetadata.audioId, activeAudioGroupId)"
+														class="
+															flex justify-center
+															items-center
+
+															aspect-square w-8
+															h-8
+
+															rounded-full
+
+															btn-default btn-secondary
+														"
+													>
+														<i class="text-xs fa-plus fa-solid"></i>
+													</button>
+												}
+											</app-audio-file-card>
+										}
+									</div>
+								} @else {
+									<!-- Empty State -->
+									<div
+										class="
+											flex flex-col
+											gap-3 justify-center
+											items-center
+
+											py-8
+
+											h-full
+
+											text-quinary-darker-20%
+										"
+									>
+										<i class="text-4xl opacity-50 fa-music fa-solid"></i>
+										<p class="text-center">No audio files found</p>
+										<p class="text-center text-sm">Try adjusting your search terms</p>
+									</div>
+								}
+							}
+						</pixli-scroll-view>
+					</div>
+				</div>
+			</div>
+		</div>
+	</main>
+}

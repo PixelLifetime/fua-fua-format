@@ -25,6 +25,10 @@ pub struct HookContext<'a> {
     pub current_indent: usize,
     pub indent_size: usize,
     pub use_tabs: bool,
+    #[serde(default)]
+    pub class_wrap_tokens_min: Option<usize>,
+    #[serde(default = "default_class_wrap_tokens_per_line")]
+    pub class_wrap_tokens_per_line: usize,
 }
 
 impl<'a> HookContext<'a> {
@@ -47,6 +51,8 @@ impl<'a> HookContext<'a> {
             current_indent,
             indent_size,
             use_tabs,
+            class_wrap_tokens_min: None,
+            class_wrap_tokens_per_line: default_class_wrap_tokens_per_line(),
         }
     }
 
@@ -63,6 +69,20 @@ impl<'a> HookContext<'a> {
         self.next_text = next_text.map(Cow::Borrowed);
         self
     }
+
+    pub fn with_class_wrapping(
+        mut self,
+        class_wrap_tokens_min: Option<usize>,
+        class_wrap_tokens_per_line: usize,
+    ) -> Self {
+        self.class_wrap_tokens_min = class_wrap_tokens_min;
+        self.class_wrap_tokens_per_line = class_wrap_tokens_per_line.max(1);
+        self
+    }
+}
+
+fn default_class_wrap_tokens_per_line() -> usize {
+    1
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

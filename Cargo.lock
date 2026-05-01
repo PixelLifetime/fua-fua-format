@@ -844,6 +844,7 @@ name = "fua-plugin-angular"
 version = "0.1.0"
 dependencies = [
  "extism-pdk",
+ "fua-core",
  "fua-plugin-api",
  "serde",
  "serde_json",
@@ -854,6 +855,16 @@ name = "fua-plugin-api"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "fua-plugin-tailwind"
+version = "0.1.0"
+dependencies = [
+ "extism-pdk",
+ "fua-plugin-api",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

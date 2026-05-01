@@ -73,8 +73,9 @@ impl FormatSession {
                 state.observe_ident(node.kind(), token.text());
                 self.output.push_str(token.text());
             }
-            SyntaxKind::STRING_DOUBLE => self.format_double_quoted_string(token.text()),
-            SyntaxKind::STRING_SINGLE => self.format_single_quoted_string(token.text()),
+            SyntaxKind::STRING_DOUBLE | SyntaxKind::STRING_SINGLE => {
+                self.format_attribute_string(token.text(), state.attribute_name())
+            }
             SyntaxKind::CLOSE_ANGLE | SyntaxKind::SLASH_CLOSE_ANGLE => {
                 self.format_tag_closing_bracket(node.kind(), element, token.text(), inline_mode)
             }

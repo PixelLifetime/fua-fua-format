@@ -1,5 +1,5 @@
 pub(crate) fn is_content_context(parent_kind: &str) -> bool {
-    parent_kind == "ELEMENT" || parent_kind == "ROOT"
+    parent_kind == "ELEMENT" || parent_kind == "ROOT" || parent_kind == "CONTENT"
 }
 
 pub(crate) fn is_block_opener(text: &str) -> bool {
@@ -24,8 +24,4 @@ pub(crate) fn is_angular_binding(attr_name: &str) -> bool {
 pub(crate) fn is_ngclass_attr(attr_name: &str) -> bool {
     let name = attr_name.trim();
     name.eq_ignore_ascii_case("[ngclass]") || name.eq_ignore_ascii_case("ngclass")
-}
-
-pub(crate) fn is_class_attr(attr_name: &str) -> bool {
-    attr_name.trim().eq_ignore_ascii_case("class")
 }
