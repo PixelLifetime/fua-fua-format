@@ -1,6 +1,7 @@
 use crate::args::Args;
 use fua_core::config::{FormatterConfig, PluginConfig};
 use fua_core::engine::FormatEngine;
+use glob::glob;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -8,30 +9,85 @@ use std::path::{Path, PathBuf};
 type CliResult<T> = Result<T, String>;
 
 pub(crate) fn run(args: Args) -> CliResult<()> {
-    let input = read_input(args.input.as_deref())?;
-    ensure_input_not_empty(&input)?;
-
     let mut config = load_formatter_config(args.config.as_deref())?;
     apply_cli_overrides(&mut config, &args);
-
     let plugin_configs = resolve_plugin_configs(&config, args.config.as_deref(), &args.plugin);
-    let output = run_engine(&input, config, &plugin_configs)?;
-    write_output(args.output.as_deref(), &output)?;
+
+    if args.input.is_empty() {
+        // stdin → stdout / --output
+        let input = read_stdin()?;
+        ensure_input_not_empty(&input)?;
+        let output = run_engine(&input, config, &plugin_configs)?;
+        write_output(args.output.as_deref(), &output)?;
+    } else {
+        let paths = expand_globs(&args.input)?;
+        if paths.is_empty() {
+            return Err(format!(
+                "no files matched the pattern(s): {}",
+                args.input.join(", ")
+            ));
+        }
+
+        if paths.len() == 1 {
+            // Single file: support --output like before
+            let input = read_file(&paths[0])?;
+            ensure_input_not_empty(&input)?;
+            let output = run_engine(&input, config, &plugin_configs)?;
+            write_output(args.output.as_deref(), &output)?;
+        } else {
+            // Multiple files: format each one in-place
+            if args.output.is_some() {
+                return Err(
+                    "--output cannot be used when multiple input files are matched; \
+                     files are formatted in-place."
+                        .to_string(),
+                );
+            }
+            let total = paths.len();
+            for path in &paths {
+                let input = read_file(path)?;
+                if input.trim().is_empty() {
+                    continue;
+                }
+                let formatted = run_engine(&input, config.clone(), &plugin_configs)?;
+                fs::write(path, &formatted).map_err(|e| {
+                    format!("failed to write '{}': {e}", path.display())
+                })?;
+                println!("formatted: {}", path.display());
+            }
+            println!("done — {total} file(s) formatted.");
+        }
+    }
 
     Ok(())
 }
 
-fn read_input(path: Option<&Path>) -> CliResult<String> {
-    if let Some(path) = path {
-        fs::read_to_string(path)
-            .map_err(|error| format!("failed to read input file '{}': {error}", path.display()))
-    } else {
-        let mut input = String::new();
-        io::stdin()
-            .read_to_string(&mut input)
-            .map_err(|error| format!("failed to read stdin: {error}"))?;
-        Ok(input)
+fn expand_globs(patterns: &[String]) -> CliResult<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+    for pattern in patterns {
+        let entries = glob(pattern)
+            .map_err(|e| format!("invalid glob pattern '{}': {e}", pattern))?;
+        for entry in entries {
+            let path = entry.map_err(|e| format!("glob error: {e}"))?;
+            if path.is_file() {
+                paths.push(path);
+            }
+        }
     }
+    Ok(paths)
+}
+
+fn read_file(path: &Path) -> CliResult<String> {
+    fs::read_to_string(path)
+        .map_err(|error| format!("failed to read input file '{}': {error}", path.display()))
+}
+
+fn read_stdin() -> CliResult<String> {
+    let mut input = String::new();
+    io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|error| format!("failed to read stdin: {error}"))?;
+    Ok(input)
 }
 
 fn ensure_input_not_empty(input: &str) -> CliResult<()> {
@@ -153,7 +209,7 @@ mod tests {
 
     fn sample_args() -> Args {
         Args {
-            input: None,
+            input: Vec::new(),
             output: None,
             config: None,
             indent_size: None,

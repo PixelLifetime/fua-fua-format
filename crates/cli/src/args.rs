@@ -4,11 +4,15 @@ use std::path::PathBuf;
 #[derive(ClapParser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 pub(crate) struct Args {
-    /// Input file path (or stdin if not provided)
+    /// Glob pattern(s) for input files. Repeat to pass multiple patterns.
+    /// Omit to read from stdin.
+    /// Examples: --input "src/**/*.html"  --input "templates/*.html"
     #[arg(short, long)]
-    pub(crate) input: Option<PathBuf>,
+    pub(crate) input: Vec<String>,
 
-    /// Output file path (or stdout if not provided)
+    /// Output file path (only used when exactly one input file is matched).
+    /// When multiple files match the glob, each file is formatted in-place.
+    /// Omit to write to stdout (single-file / stdin mode).
     #[arg(short, long)]
     pub(crate) output: Option<PathBuf>,
 
