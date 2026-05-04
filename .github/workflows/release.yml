@@ -202,20 +202,20 @@ jobs:
             fua-fua-darwin-x64 \
             fua-fua-darwin-arm64
           do
-            npm publish packages/$pkg --access public --provenance
+            npm publish ./packages/$pkg --access public --provenance
           done
 
       - name: Publish WASM plugins
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm publish packages/fua-plugin-tailwind --access public --provenance
-          npm publish packages/fua-plugin-angular  --access public --provenance
+          npm publish ./packages/fua-plugin-tailwind --access public --provenance
+          npm publish ./packages/fua-plugin-angular  --access public --provenance
 
       - name: Publish core fua-fua
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish packages/fua-fua --access public --provenance
+        run: npm publish ./packages/fua-fua --access public --provenance
 
   # ──────────────────────────────────────────────
   # 4. Create GitHub Release with binary downloads
