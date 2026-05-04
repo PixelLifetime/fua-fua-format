@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/PixelLifetime/fua-fua-format"
+    "url": "git+https://github.com/PixelLifetime/fua-fua-format.git"
   },
   "bin": {
     "fua-fua": "./bin/run.js"

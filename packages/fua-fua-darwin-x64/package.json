@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "fua-fua native binary for macOS x64",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PixelLifetime/fua-fua-format.git"
+  },
   "os": ["darwin"],
   "cpu": ["x64"],
   "files": ["bin"]
