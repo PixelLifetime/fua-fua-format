@@ -13,7 +13,90 @@ Fua Fua Format is built around a lossless HTML core plus optional WASM plugins. 
 
 ## Usage
 
-You can use the formatter directly through the CLI:
+You can use the formatter in two main ways:
+
+- **As a local npm tool in your own project** (recommended for real app repos)
+- **Directly from Rust source** (useful while developing this formatter itself)
+
+### Use in your own project (npm)
+
+Install formatter + plugins:
+
+```bash
+npm i -D fua-fua @fua-fua/plugin-tailwind @fua-fua/plugin-angular
+```
+
+Create `.fua/config.json` in your project root:
+
+```json
+{
+  "indent_size": 2,
+  "use_tabs": false,
+  "print_width": 100,
+  "wrap_attributes": true,
+  "class_wrap_tokens_min": 6,
+  "class_wrap_tokens_per_line": 2,
+  "plugins": [
+    {
+      "path": "./node_modules/@fua-fua/plugin-tailwind/dist/fua_plugin_tailwind.wasm",
+      "options": {
+        "class_wrap_tokens_per_line": 2,
+        "group_blank_lines": true
+      }
+    },
+    {
+      "path": "./node_modules/@fua-fua/plugin-angular/dist/fua_plugin_angular.wasm",
+      "options": {
+        "wrap_conditions_min": 2,
+        "wrap_conditions_in_parens": true,
+        "ngclass_wrap_entries_min": 2
+      }
+    }
+  ]
+}
+```
+
+Add scripts to your app `package.json`:
+
+```json
+{
+  "scripts": {
+    "format:html": "fua-fua --input \"src/**/*.html\" --config .fua/config.json",
+    "format:html:file": "fua-fua --input \"src/app/app.component.html\" --config .fua/config.json --output \"src/app/app.component.html\""
+  }
+}
+```
+
+Run:
+
+```bash
+npm run format:html
+```
+
+### Optional: format only changed HTML files in pre-commit
+
+Install Husky:
+
+```bash
+npm i -D husky
+npx husky init
+```
+
+Put this in `.husky/pre-commit`:
+
+```sh
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '\.html$' \
+  | while read -r file; do
+      npx fua-fua --input "$file" --config .fua/config.json --output "$file" || exit 1
+      git add "$file"
+    done
+```
+
+### Develop from Rust source
 
 ```bash
 # Format a file and output to stdout
@@ -27,12 +110,16 @@ cargo run -p cli -- --input examples/sample.html --config examples/config.json -
 ```
 
 ### CLI Arguments
-* `-i, --input <file>`: Input file path. Reads from `stdin` if not provided.
+* `-i, --input <pattern>`: Input glob pattern (repeatable). Examples: `src/**/*.html`, `templates/*.html`. Reads from `stdin` if not provided.
 * `-o, --output <file>`: Output file path. Writes to `stdout` by default.
 * `-c, --config <json file>`: Path to your formatting configuration definitions.
 * `--indent-size <number>`: Override the indent size explicitly.
 * `--use-tabs <bool>`: Override the whitespace strategy explicitly.
 * `--plugin <file>`: Load a compiled WASM plugin. Repeat to load multiple plugins.
+
+Multi-file behavior:
+- If the input pattern resolves to **one** file, `--output` is supported.
+- If the input pattern resolves to **multiple** files, formatting runs **in-place** for each file and `--output` is rejected.
 
 ## Configuration (`config.json`)
 
@@ -161,3 +248,18 @@ cargo test -p fua-plugin-angular wraps_conditions_across_config_sweep
 ```
 
 Tip: append `-- --nocapture` to see `println!` output during tests.
+
+## Troubleshooting
+
+### Windows glob behavior
+
+Windows shells do not expand globs before passing args to programs. `fua-fua` handles glob expansion internally, so patterns like `src/**/*.html` work cross-platform.
+
+### Config path errors
+
+If config loading fails, the CLI now prints:
+- the raw path passed to `--config`
+- the resolved absolute path
+- current working directory
+
+This makes it easier to spot wrong paths in CI, npm scripts, or monorepo subfolders.

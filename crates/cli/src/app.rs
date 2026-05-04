@@ -112,9 +112,14 @@ fn load_formatter_config(path: Option<&Path>) -> CliResult<FormatterConfig> {
     };
 
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("<unknown>"));
-    let abs = cwd.join(path);
+    let normalized = normalize_path(path);
+    let abs = if normalized.is_absolute() {
+        normalized
+    } else {
+        cwd.join(normalized)
+    };
 
-    let config_str = fs::read_to_string(path).map_err(|error| {
+    let config_str = fs::read_to_string(&abs).map_err(|error| {
         format!(
             "failed to read config file '{}' (resolved to '{}'): {error}\n  cwd: {}",
             path.display(),
@@ -124,6 +129,10 @@ fn load_formatter_config(path: Option<&Path>) -> CliResult<FormatterConfig> {
     })?;
     serde_json::from_str(&config_str)
         .map_err(|error| format!("failed to parse config file '{}': {error}", path.display()))
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    path.components().collect()
 }
 
 fn apply_cli_overrides(config: &mut FormatterConfig, args: &Args) {

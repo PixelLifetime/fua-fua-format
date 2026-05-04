@@ -331,6 +331,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "fua-core",
+ "glob",
  "serde_json",
 ]
 
