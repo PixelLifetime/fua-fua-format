@@ -112,22 +112,13 @@ jobs:
           --target wasm32-wasip1
           --release
 
-      - name: Stage WASM into npm packages
-        run: |
-          mkdir -p packages/fua-plugin-tailwind/dist
-          mkdir -p packages/fua-plugin-angular/dist
-          cp target/wasm32-wasip1/release/fua_plugin_tailwind.wasm \
-             packages/fua-plugin-tailwind/dist/
-          cp target/wasm32-wasip1/release/fua_plugin_angular.wasm \
-             packages/fua-plugin-angular/dist/
-
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: wasm-plugins
           path: |
-            packages/fua-plugin-tailwind/dist/
-            packages/fua-plugin-angular/dist/
+            target/wasm32-wasip1/release/fua_plugin_tailwind.wasm
+            target/wasm32-wasip1/release/fua_plugin_angular.wasm
 
   # ──────────────────────────────────────────────
   # 3. Publish everything to npm
@@ -166,12 +157,9 @@ jobs:
       - name: Place WASM plugins
         shell: bash
         run: |
-          mkdir -p packages/fua-plugin-tailwind/dist
-          mkdir -p packages/fua-plugin-angular/dist
-          cp -r artifacts/wasm-plugins/packages/fua-plugin-tailwind/dist/. \
-               packages/fua-plugin-tailwind/dist/
-          cp -r artifacts/wasm-plugins/packages/fua-plugin-angular/dist/. \
-               packages/fua-plugin-angular/dist/
+          mkdir -p packages/fua-plugin-tailwind/dist packages/fua-plugin-angular/dist
+          cp artifacts/wasm-plugins/fua_plugin_tailwind.wasm packages/fua-plugin-tailwind/dist/
+          cp artifacts/wasm-plugins/fua_plugin_angular.wasm  packages/fua-plugin-angular/dist/
 
       # Stamp the version from the git tag in every package.json
       - name: Stamp version ${{ env.VERSION }}
@@ -253,8 +241,6 @@ jobs:
           for pkg in fua-fua-win32-x64 fua-fua-linux-x64 fua-fua-darwin-x64 fua-fua-darwin-arm64; do
             tar czf ${pkg}.tar.gz $pkg
           done
-          cp wasm-plugins/packages/fua-plugin-tailwind/dist/fua_plugin_tailwind.wasm .
-          cp wasm-plugins/packages/fua-plugin-angular/dist/fua_plugin_angular.wasm   .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -265,5 +251,5 @@ jobs:
             artifacts/fua-fua-linux-x64.tar.gz
             artifacts/fua-fua-darwin-x64.tar.gz
             artifacts/fua-fua-darwin-arm64.tar.gz
-            artifacts/fua_plugin_tailwind.wasm
-            artifacts/fua_plugin_angular.wasm
+            artifacts/wasm-plugins/fua_plugin_tailwind.wasm
+            artifacts/wasm-plugins/fua_plugin_angular.wasm
