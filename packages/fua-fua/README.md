@@ -11,7 +11,7 @@ npm i -D fua-fua
 Optional plugins:
 
 ```bash
-npm i -D fua-plugin-angular fua-plugin-tailwind
+npm i -D @fua-fua/plugin-angular @fua-fua/plugin-tailwind
 ```
 
 ## Usage
@@ -44,14 +44,14 @@ npx fua-fua --input src/app/app.component.html --output src/app/app.component.ht
   "class_wrap_tokens_per_line": 2,
   "plugins": [
     {
-      "path": "./node_modules/fua-plugin-tailwind/dist/fua_plugin_tailwind.wasm",
+      "path": "./node_modules/@fua-fua/plugin-tailwind/dist/fua_plugin_tailwind.wasm",
       "options": {
         "class_wrap_tokens_per_line": 2,
         "group_blank_lines": true
       }
     },
     {
-      "path": "./node_modules/fua-plugin-angular/dist/fua_plugin_angular.wasm",
+      "path": "./node_modules/@fua-fua/plugin-angular/dist/fua_plugin_angular.wasm",
       "options": {
         "wrap_conditions_min": 2,
         "wrap_conditions_in_parens": true,

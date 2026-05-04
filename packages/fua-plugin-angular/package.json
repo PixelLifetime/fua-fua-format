@@ -1,5 +1,5 @@
 {
-  "name": "fua-plugin-angular",
+  "name": "@fua-fua/plugin-angular",
   "version": "0.1.0",
   "description": "Angular-specific formatting plugin for fua-fua (WASM)",
   "keywords": ["html", "angular", "formatter", "wasm"],

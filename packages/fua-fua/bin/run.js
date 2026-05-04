@@ -10,10 +10,10 @@ const PLATFORM = os.platform();
 const ARCH = os.arch();
 
 const PLATFORM_PACKAGES = {
-  "win32-x64":   "fua-fua-win32-x64",
-  "linux-x64":   "fua-fua-linux-x64",
-  "darwin-x64":  "fua-fua-darwin-x64",
-  "darwin-arm64": "fua-fua-darwin-arm64",
+  "win32-x64":    "@fua-fua/win32-x64",
+  "linux-x64":    "@fua-fua/linux-x64",
+  "darwin-x64":   "@fua-fua/darwin-x64",
+  "darwin-arm64": "@fua-fua/darwin-arm64",
 };
 
 const BINARY_NAMES = {

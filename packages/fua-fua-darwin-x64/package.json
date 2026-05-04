@@ -1,5 +1,5 @@
 {
-  "name": "fua-fua-darwin-x64",
+  "name": "@fua-fua/darwin-x64",
   "version": "0.1.0",
   "description": "fua-fua native binary for macOS x64",
   "license": "MIT",

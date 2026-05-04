@@ -9,7 +9,7 @@ Handles:
 ## Install
 
 ```bash
-npm i -D fua-plugin-angular
+npm i -D @fua-fua/plugin-angular
 ```
 
 ## Config (`.fua/config.json`)
@@ -18,7 +18,7 @@ npm i -D fua-plugin-angular
 {
   "plugins": [
     {
-      "path": "./node_modules/fua-plugin-angular/dist/fua_plugin_angular.wasm",
+      "path": "./node_modules/@fua-fua/plugin-angular/dist/fua_plugin_angular.wasm",
       "options": {
         "wrap_conditions_min": 2,
         "wrap_conditions_in_parens": true,

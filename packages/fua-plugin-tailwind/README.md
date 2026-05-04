@@ -10,7 +10,7 @@ Handles:
 ## Install
 
 ```bash
-npm i -D fua-plugin-tailwind
+npm i -D @fua-fua/plugin-tailwind
 ```
 
 ## Config (`.fua/config.json`)
@@ -19,7 +19,7 @@ npm i -D fua-plugin-tailwind
 {
   "plugins": [
     {
-      "path": "./node_modules/fua-plugin-tailwind/dist/fua_plugin_tailwind.wasm",
+      "path": "./node_modules/@fua-fua/plugin-tailwind/dist/fua_plugin_tailwind.wasm",
       "options": {
         "class_wrap_tokens_per_line": 2,
         "group_blank_lines": true

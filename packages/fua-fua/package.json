@@ -17,9 +17,9 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "fua-fua-win32-x64": "0.1.0",
-    "fua-fua-linux-x64": "0.1.0",
-    "fua-fua-darwin-x64": "0.1.0",
-    "fua-fua-darwin-arm64": "0.1.0"
+    "@fua-fua/win32-x64": "0.1.0",
+    "@fua-fua/linux-x64": "0.1.0",
+    "@fua-fua/darwin-x64": "0.1.0",
+    "@fua-fua/darwin-arm64": "0.1.0"
   }
 }

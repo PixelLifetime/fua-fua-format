@@ -176,6 +176,7 @@ jobs:
             fua-plugin-angular
           do
             PKG_JSON="packages/$pkg/package.json"
+            # directory names stay flat (fua-fua-win32-x64) but package.json "name" is scoped (@fua-fua/win32-x64)
             # Update "version" field
             node -e "
               const fs = require('fs');
@@ -196,26 +197,21 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for pkg in \
-            fua-fua-win32-x64 \
-            fua-fua-linux-x64 \
-            fua-fua-darwin-x64 \
-            fua-fua-darwin-arm64
-          do
-            npm publish ./packages/$pkg --access public --provenance
+          for dir in fua-fua-win32-x64 fua-fua-linux-x64 fua-fua-darwin-x64 fua-fua-darwin-arm64; do
+            npm publish "./packages/$dir" --access public --provenance
           done
 
       - name: Publish WASM plugins
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm publish ./packages/fua-plugin-tailwind --access public --provenance
-          npm publish ./packages/fua-plugin-angular  --access public --provenance
+          npm publish "./packages/fua-plugin-tailwind" --access public --provenance
+          npm publish "./packages/fua-plugin-angular"  --access public --provenance
 
       - name: Publish core fua-fua
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish ./packages/fua-fua --access public --provenance
+        run: npm publish "./packages/fua-fua" --access public --provenance
 
   # ──────────────────────────────────────────────
   # 4. Create GitHub Release with binary downloads
