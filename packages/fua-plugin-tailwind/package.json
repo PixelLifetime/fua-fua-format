@@ -1,6 +1,6 @@
 {
   "name": "@fua-fua/plugin-tailwind",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tailwind CSS class sorting/wrapping plugin for fua-fua (WASM)",
   "keywords": ["html", "tailwind", "css", "formatter", "wasm"],
   "license": "MIT",
@@ -16,3 +16,4 @@
     "fua-fua": ">=0.1.0"
   }
 }
+

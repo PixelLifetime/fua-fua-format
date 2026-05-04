@@ -1,6 +1,6 @@
 {
   "name": "@fua-fua/win32-x64",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "fua-fua native binary for Windows x64",
   "license": "MIT",
   "repository": {
@@ -11,3 +11,4 @@
   "cpu": ["x64"],
   "files": ["bin"]
 }
+

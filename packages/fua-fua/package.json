@@ -1,6 +1,6 @@
 {
   "name": "fua-fua",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Blazing-fast, highly-permissive HTML formatter with optional WASM plugins",
   "keywords": ["html", "formatter", "tailwind", "angular"],
   "license": "MIT",
@@ -17,9 +17,10 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@fua-fua/win32-x64": "0.1.0",
-    "@fua-fua/linux-x64": "0.1.0",
-    "@fua-fua/darwin-x64": "0.1.0",
-    "@fua-fua/darwin-arm64": "0.1.0"
+    "@fua-fua/win32-x64": "0.1.1",
+    "@fua-fua/linux-x64": "0.1.1",
+    "@fua-fua/darwin-x64": "0.1.1",
+    "@fua-fua/darwin-arm64": "0.1.1"
   }
 }
+
