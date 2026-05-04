@@ -5,6 +5,7 @@ use glob::glob;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::env;
 
 type CliResult<T> = Result<T, String>;
 
@@ -21,12 +22,6 @@ pub(crate) fn run(args: Args) -> CliResult<()> {
         write_output(args.output.as_deref(), &output)?;
     } else {
         let paths = expand_globs(&args.input)?;
-        if paths.is_empty() {
-            return Err(format!(
-                "no files matched the pattern(s): {}",
-                args.input.join(", ")
-            ));
-        }
 
         if paths.len() == 1 {
             // Single file: support --output like before
@@ -63,16 +58,29 @@ pub(crate) fn run(args: Args) -> CliResult<()> {
 }
 
 fn expand_globs(patterns: &[String]) -> CliResult<Vec<PathBuf>> {
+    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("<unknown>"));
     let mut paths = Vec::new();
     for pattern in patterns {
-        let entries = glob(pattern)
-            .map_err(|e| format!("invalid glob pattern '{}': {e}", pattern))?;
+        let entries = glob(pattern).map_err(|e| {
+            format!(
+                "invalid glob pattern '{}': {e}\n  cwd: {}",
+                pattern,
+                cwd.display()
+            )
+        })?;
         for entry in entries {
             let path = entry.map_err(|e| format!("glob error: {e}"))?;
             if path.is_file() {
                 paths.push(path);
             }
         }
+    }
+    if paths.is_empty() {
+        return Err(format!(
+            "no files matched the pattern(s): {}\n  cwd: {}",
+            patterns.join(", "),
+            cwd.display()
+        ));
     }
     Ok(paths)
 }
@@ -103,8 +111,17 @@ fn load_formatter_config(path: Option<&Path>) -> CliResult<FormatterConfig> {
         return Ok(FormatterConfig::default());
     };
 
-    let config_str = fs::read_to_string(path)
-        .map_err(|error| format!("failed to read config file '{}': {error}", path.display()))?;
+    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("<unknown>"));
+    let abs = cwd.join(path);
+
+    let config_str = fs::read_to_string(path).map_err(|error| {
+        format!(
+            "failed to read config file '{}' (resolved to '{}'): {error}\n  cwd: {}",
+            path.display(),
+            abs.display(),
+            cwd.display(),
+        )
+    })?;
     serde_json::from_str(&config_str)
         .map_err(|error| format!("failed to parse config file '{}': {error}", path.display()))
 }

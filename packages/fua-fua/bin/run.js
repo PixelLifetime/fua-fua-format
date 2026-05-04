@@ -59,5 +59,16 @@ try {
   }
 }
 
-const result = spawnSync(binaryPath, process.argv.slice(2), { stdio: "inherit" });
+const result = spawnSync(binaryPath, process.argv.slice(2), {
+  stdio: "inherit",
+  cwd: process.cwd(),  // pass shell CWD explicitly so relative paths resolve correctly
+});
+
+if (result.error) {
+  console.error(`fua-fua: failed to start binary at "${binaryPath}"`);
+  console.error(`  reason: ${result.error.message}`);
+  console.error(`  cwd: ${process.cwd()}`);
+  process.exit(1);
+}
+
 process.exit(result.status ?? 1);
