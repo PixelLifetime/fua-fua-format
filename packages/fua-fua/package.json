@@ -1,0 +1,25 @@
+{
+  "name": "fua-fua",
+  "version": "0.1.0",
+  "description": "Blazing-fast, highly-permissive HTML formatter with optional WASM plugins",
+  "keywords": ["html", "formatter", "tailwind", "angular"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PixelLifetime/fua-fua-format"
+  },
+  "bin": {
+    "fua-fua": "./bin/run.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "fua-fua-win32-x64": "0.1.0",
+    "fua-fua-linux-x64": "0.1.0",
+    "fua-fua-darwin-x64": "0.1.0",
+    "fua-fua-darwin-arm64": "0.1.0"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "fua-plugin-tailwind",
+  "version": "0.1.0",
+  "description": "Tailwind CSS class sorting/wrapping plugin for fua-fua (WASM)",
+  "keywords": ["html", "tailwind", "css", "formatter", "wasm"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PixelLifetime/fua-fua-format"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "fua-fua": ">=0.1.0"
+  }
+}

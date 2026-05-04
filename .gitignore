@@ -9,6 +9,19 @@
 *~
 *.bak
 
+# npm
+node_modules/
+
+# Built native binaries staged into platform packages (populated by CI)
+packages/fua-fua-win32-x64/bin/
+packages/fua-fua-linux-x64/bin/
+packages/fua-fua-darwin-x64/bin/
+packages/fua-fua-darwin-arm64/bin/
+
+# Built WASM plugins staged into npm packages (populated by CI)
+packages/fua-plugin-tailwind/dist/
+packages/fua-plugin-angular/dist/
+
 # Operating System files
 .DS_Store
 Thumbs.db
