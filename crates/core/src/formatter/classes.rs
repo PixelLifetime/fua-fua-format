@@ -24,7 +24,7 @@ impl FormatSession {
             return None;
         }
 
-        let tokens: Vec<&str> = inner.split_whitespace().collect();
+        let tokens = split_class_tokens_preserving_interpolation(inner);
         if tokens.is_empty() || tokens.len() < min_tokens {
             return None;
         }
@@ -112,4 +112,44 @@ fn escape_for_quote(value: &str, quote: char) -> String {
         '\'' => value.replace('\'', "&apos;"),
         _ => value.to_string(),
     }
+}
+
+fn split_class_tokens_preserving_interpolation(value: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let bytes = value.as_bytes();
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        while index < bytes.len() && bytes[index].is_ascii_whitespace() {
+            index += 1;
+        }
+        if index >= bytes.len() {
+            break;
+        }
+
+        if bytes[index] == b'{' && bytes.get(index + 1) == Some(&b'{') {
+            let start = index;
+            index += 2;
+            while index + 1 < bytes.len() {
+                if bytes[index] == b'}' && bytes[index + 1] == b'}' {
+                    index += 2;
+                    break;
+                }
+                index += 1;
+            }
+            let token = value[start..index].trim().to_string();
+            if !token.is_empty() {
+                tokens.push(token);
+            }
+            continue;
+        }
+
+        let start = index;
+        while index < bytes.len() && !bytes[index].is_ascii_whitespace() {
+            index += 1;
+        }
+        tokens.push(value[start..index].to_string());
+    }
+
+    tokens
 }

@@ -121,4 +121,23 @@ mod tests {
             HookResponse::replace(Replacement::text("\"flex px-4 py-2\""))
         );
     }
+
+    #[test]
+    fn keeps_interpolation_token_intact_when_processing_class() {
+        let response = dispatch_hook(class_request(
+            "\"fixed p-1.5 {{ this.getPositionClass() }}\"",
+            Some(1),
+            2,
+            None,
+        ));
+
+        match response {
+            HookResponse::Replace(Replacement { output, .. }) => {
+                assert!(output.contains("{{ this.getPositionClass() }}"));
+                assert!(!output.contains("{{\n"));
+                assert!(!output.contains("{{ }}"));
+            }
+            other => panic!("expected replacement, got {other:?}"),
+        }
+    }
 }

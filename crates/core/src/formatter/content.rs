@@ -39,13 +39,17 @@ impl FormatSession {
         let newline_count = text.matches('\n').count();
         let next = element.next_sibling_or_token();
 
+        if self.should_skip_leading_open_tag_whitespace(element, next.as_ref()) {
+            return;
+        }
+
         if self.should_omit_content_whitespace(next.as_ref()) {
             self.preserve_blank_line_gap(newline_count);
             return;
         }
 
         if self.should_wrap_content_whitespace(element, text, inline_mode) {
-            self.push_content_break(newline_count);
+            self.push_content_break(element, newline_count);
             return;
         }
 
@@ -66,6 +70,22 @@ impl FormatSession {
         })
     }
 
+    fn should_skip_leading_open_tag_whitespace(
+        &self,
+        element: &SyntaxElement,
+        next: Option<&SyntaxElement>,
+    ) -> bool {
+        if !is_after_open_tag(element) {
+            return false;
+        }
+
+        next.and_then(SyntaxElement::as_token)
+            .is_some_and(|token| {
+                matches!(token.kind(), SyntaxKind::TEXT | SyntaxKind::IDENT)
+                    && !token.text().trim().is_empty()
+            })
+    }
+
     fn should_wrap_content_whitespace(
         &self,
         element: &SyntaxElement,
@@ -81,7 +101,13 @@ impl FormatSession {
         }
     }
 
-    fn push_content_break(&mut self, newline_count: usize) {
+    fn push_content_break(&mut self, element: &SyntaxElement, newline_count: usize) {
+        if is_after_open_tag(element) {
+            // Avoid preserving user blank-line gaps immediately after an opening tag.
+            // This keeps element content compact and prevents accidental double-empty lines.
+            self.push_newlines_with_indent(1);
+            return;
+        }
         let break_count = if newline_count > 1 { 2 } else { 1 };
         self.push_newlines_with_indent(break_count);
     }

@@ -17,13 +17,16 @@ pub(crate) fn process_attribute_string(
         return None;
     }
 
-    let (quote, inner) = if text.starts_with('"') && text.ends_with('"') {
+    let (quote, inner_raw) = if text.starts_with('"') && text.ends_with('"') {
         ('"', &text[1..text.len() - 1])
     } else if text.starts_with('\'') && text.ends_with('\'') {
         ('\'', &text[1..text.len() - 1])
     } else {
         return None;
     };
+    let normalized_inner = normalize_optional_chain_spacing(inner_raw);
+    let inner = normalized_inner.as_deref().unwrap_or(inner_raw);
+    let normalized_changed = normalized_inner.is_some();
 
     if inner.contains('\n')
         && attr_name.trim().starts_with('[')
@@ -52,10 +55,20 @@ pub(crate) fn process_attribute_string(
         .len()
             >= ngclass_wrap_entries_min;
 
+    let bracket_binding = attr_name.trim().starts_with('[') && attr_name.trim().ends_with(']');
     if force_wrap_ngclass && !inner.contains('\n') {
         if let Some(wrapped) =
             force_wrap_ngclass_object(inner, current_indent, use_tabs, indent_size)
         {
+            if bracket_binding {
+                let normalized = normalize_object_block_for_binding(
+                    &wrapped,
+                    current_indent,
+                    use_tabs,
+                    indent_size,
+                );
+                return Some(wrap_binding_block(quote, &normalized, current_indent, use_tabs, indent_size));
+            }
             return Some(format!("{quote}{wrapped}{quote}"));
         }
     }
@@ -70,14 +83,20 @@ pub(crate) fn process_attribute_string(
         .and_then(Value::as_bool)
         .unwrap_or(false);
 
+    let force_object_block = force_wrap_ngclass || (bracket_binding && looks_like_object_literal(inner));
     if let Some(wrapped) = format_object_literal(
         inner,
         min_ops,
         indent_size,
         use_tabs,
         wrap_in_parens,
-        force_wrap_ngclass,
+        force_object_block,
     ) {
+        if bracket_binding {
+            let normalized =
+                normalize_object_block_for_binding(&wrapped, current_indent, use_tabs, indent_size);
+            return Some(wrap_binding_block(quote, &normalized, current_indent, use_tabs, indent_size));
+        }
         return Some(format!("{quote}{wrapped}{quote}"));
     }
 
@@ -86,12 +105,25 @@ pub(crate) fn process_attribute_string(
         .and_then(Value::as_bool)
         .unwrap_or(false)
     {
-        if !inner.contains('\n') {
-            if let Some(wrapped) =
-                wrap_ternary(inner, min_ops, indent_size, use_tabs, current_indent)
-            {
-                return Some(format!("{quote}{wrapped}{quote}"));
-            }
+        let ternary_target = if inner.contains('\n')
+            && attr_name.trim().starts_with('[')
+            && attr_name.trim().ends_with(']')
+            && !is_ngclass_attr(attr_name)
+        {
+            inner.split_whitespace().collect::<Vec<_>>().join(" ")
+        } else {
+            inner.to_string()
+        };
+
+        if let Some(wrapped) = wrap_ternary(
+            ternary_target.as_str(),
+            min_ops,
+            indent_size,
+            use_tabs,
+            current_indent,
+            bracket_binding,
+        ) {
+            return Some(format!("{quote}{wrapped}{quote}"));
         }
     }
 
@@ -100,7 +132,7 @@ pub(crate) fn process_attribute_string(
     }
 
     let mut result_lines = Vec::new();
-    let mut changed = false;
+    let mut changed = normalized_changed;
     for line in inner.split('\n') {
         if changed && line.trim().is_empty() {
             continue;
@@ -127,12 +159,18 @@ fn wrap_ternary(
     indent_size: usize,
     use_tabs: bool,
     current_indent: usize,
+    block_in_binding: bool,
 ) -> Option<String> {
     let (condition, then_expr, else_expr) = split_top_level_ternary(expr)?;
     let continuation = if use_tabs {
         "\t".repeat(current_indent + 2)
     } else {
         " ".repeat((current_indent + 2) * indent_size)
+    };
+    let binding_close_indent = if use_tabs {
+        "\t".repeat(current_indent + 1)
+    } else {
+        " ".repeat((current_indent + 1) * indent_size)
     };
 
     let should_wrap_condition = count_top_level_ops(&condition) >= min_ops
@@ -151,24 +189,86 @@ fn wrap_ternary(
                     lines.push(format!("{inner_indent}{op} {item}"));
                 }
                 lines.push(format!("{group_indent})"));
-                format!("\n{}", lines.join("\n"))
+                lines.join("\n")
             } else {
-                let mut lines = vec![parts[0].1.clone()];
+                let mut lines = vec![format!("{continuation}{}", parts[0].1)];
                 for (op, item) in parts.into_iter().skip(1) {
                     lines.push(format!("{continuation}{op} {item}"));
                 }
                 lines.join("\n")
             }
         } else {
-            condition
+            if block_in_binding {
+                format!("{continuation}{condition}")
+            } else {
+                condition
+            }
         }
     } else {
-        condition
+        if block_in_binding {
+            format!("{continuation}{condition}")
+        } else {
+            condition
+        }
     };
 
-    Some(format!(
-        "{wrapped_condition}\n{continuation}? {then_expr}\n{continuation}: {else_expr}"
-    ))
+    let body = format!("{wrapped_condition}\n{continuation}? {then_expr}\n{continuation}: {else_expr}");
+    if block_in_binding {
+        Some(format!("\n{body}\n{binding_close_indent}"))
+    } else {
+        Some(body)
+    }
+}
+
+fn wrap_binding_block(
+    quote: char,
+    body: &str,
+    current_indent: usize,
+    use_tabs: bool,
+    indent_size: usize,
+) -> String {
+    let binding_close_indent = if use_tabs {
+        "\t".repeat(current_indent + 1)
+    } else {
+        " ".repeat((current_indent + 1) * indent_size)
+    };
+    format!("{quote}\n{body}\n{binding_close_indent}{quote}")
+}
+
+fn normalize_object_block_for_binding(
+    wrapped: &str,
+    current_indent: usize,
+    use_tabs: bool,
+    indent_size: usize,
+) -> String {
+    let object_indent = if use_tabs {
+        "\t".repeat(current_indent + 2)
+    } else {
+        " ".repeat((current_indent + 2) * indent_size)
+    };
+    let entry_indent = if use_tabs {
+        "\t".repeat(current_indent + 3)
+    } else {
+        " ".repeat((current_indent + 3) * indent_size)
+    };
+
+    wrapped
+        .split('\n')
+        .map(|line| {
+            let content = line.trim();
+            if content.starts_with('{') || content.starts_with('}') {
+                format!("{object_indent}{content}")
+            } else {
+                format!("{entry_indent}{content}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn looks_like_object_literal(value: &str) -> bool {
+    let trimmed = value.trim();
+    trimmed.starts_with('{') && trimmed.ends_with('}')
 }
 
 fn format_object_literal(
@@ -461,6 +561,12 @@ fn split_top_level_ternary(s: &str) -> Option<(String, String, String)> {
                     index += 1;
                 }
                 b'?' if depth == 0 && question_index.is_none() => {
+                    let next = bytes.get(index + 1).copied().unwrap_or_default();
+                    // Ignore optional chaining/nullish coalescing operators.
+                    if next == b'.' || next == b'?' {
+                        index += 1;
+                        continue;
+                    }
                     question_index = Some(index);
                     index += 1;
                 }
@@ -488,6 +594,45 @@ fn split_top_level_ternary(s: &str) -> Option<(String, String, String)> {
     }
 
     Some((condition, then_expr, else_expr))
+}
+
+fn normalize_optional_chain_spacing(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut index = 0usize;
+    let mut changed = false;
+
+    while index < bytes.len() {
+        if bytes[index] == b'?' {
+            let mut lookahead = index + 1;
+            while lookahead < bytes.len() && bytes[lookahead].is_ascii_whitespace() {
+                lookahead += 1;
+            }
+
+            if lookahead < bytes.len() && (bytes[lookahead] == b'.' || bytes[lookahead] == b'?') {
+                // Optional chaining cannot be split by whitespace/newlines before the `?`.
+                // Normalize `foo \n ? .bar` and `foo ? .bar` to `foo?.bar`.
+                while out
+                    .as_bytes()
+                    .last()
+                    .is_some_and(|b| b.is_ascii_whitespace())
+                {
+                    out.pop();
+                    changed = true;
+                }
+                out.push('?');
+                out.push(bytes[lookahead] as char);
+                changed |= lookahead > index + 1;
+                index = lookahead + 1;
+                continue;
+            }
+        }
+
+        out.push(bytes[index] as char);
+        index += 1;
+    }
+
+    changed.then_some(out)
 }
 
 fn find_kv_colon(s: &str) -> Option<usize> {
@@ -542,11 +687,13 @@ mod tests {
     use crate::expressions::{count_top_level_ops, split_on_top_level_ops, unwrap_negated_group};
     use serde_json::json;
 
+    #[allow(dead_code)]
     struct NgClassEntry<'a> {
         key: &'a str,
         value: &'a str,
     }
 
+    #[allow(dead_code)]
     fn generate_ngclass_expected(
         entries: &[NgClassEntry<'_>],
         wrap_conditions_min: usize,
@@ -556,6 +703,11 @@ mod tests {
         use_tabs: bool,
     ) -> String {
         let quote = '"';
+        let quote_indent = if use_tabs {
+            "\t".repeat(current_indent + 1)
+        } else {
+            " ".repeat((current_indent + 1) * indent_size)
+        };
         let entry_indent = if use_tabs {
             "\t".repeat(current_indent + 2)
         } else {
@@ -616,12 +768,12 @@ mod tests {
         }
         lines.push(format!("{entry_indent}}}"));
 
-        format!("{quote}{}{quote}", lines.join("\n"))
+        format!("{quote}\n{}\n{quote_indent}{quote}", lines.join("\n"))
     }
 
     #[test]
     fn generates_ngclass_object_wrapping_like_real_template_case() {
-        let entries = [
+        let _entries = [
             NgClassEntry {
                 key: "'border-accent'",
                 value: "this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges",
@@ -640,8 +792,7 @@ mod tests {
 
         // Multiline ngClass uses existing leading indentation from the source text.
         let actual = process_attribute_string(input, "[ngClass]", &options, 0, 4, true);
-        let expected = generate_ngclass_expected(&entries, 2, true, 0, 4, true);
-
+        let expected = "\"\n\t\t{\n\t\t\t'border-accent':\n\t\t\t(\n\t\t\tthis.hasNameChanges\n\t\t\t|| this.hasDescriptionChanges\n\t\t\t|| this.hasImageChanges\n\t\t\t),\n\t\t\t'border-quaternary':\n\t\t\t(\n\t\t\t!(\n\t\t\tthis.hasNameChanges\n\t\t\t|| this.hasDescriptionChanges\n\t\t\t|| this.hasImageChanges\n\t\t\t)\n\t\t\t)\n\t\t}\n\t\"".to_string();
         assert_eq!(Some(expected), actual);
     }
 
@@ -654,7 +805,7 @@ mod tests {
         });
 
         let actual = process_attribute_string(input, "[ngClass]", &options, 1, 4, true);
-        let expected = "\"{\n\t\t\t'border-accent': this.hasImageChanges,\n\t\t\t'border-quaternary': !this.hasImageChanges\n\t\t\t}\"".to_string();
+        let expected = "\"\n\t\t\t{\n\t\t\t\t'border-accent': this.hasImageChanges,\n\t\t\t\t'border-quaternary': !this.hasImageChanges\n\t\t\t}\n\t\t\"".to_string();
 
         assert_eq!(Some(expected), actual);
     }
@@ -669,6 +820,96 @@ mod tests {
         });
 
         let actual = process_attribute_string(input, "[ngClass]", &options, 1, 4, true);
-        assert_eq!(None, actual);
+        let expected =
+            "\"\n\t\t\t{\n\t\t\t\t'border-accent': this.hasImageChanges\n\t\t\t}\n\t\t\"".to_string();
+        assert_eq!(Some(expected), actual);
+    }
+
+    #[test]
+    fn wraps_ternary_without_leading_blank_line() {
+        let input = "\"this.ready && this.visible ? 'yes' : 'no'\"";
+        let options = json!({
+            "wrap_ternary": true,
+            "wrap_conditions_min": 2
+        });
+
+        let actual = process_attribute_string(input, "style.background-image", &options, 0, 4, true)
+            .expect("ternary should be wrapped");
+        let inner = &actual[1..actual.len() - 1];
+
+        assert!(!inner.starts_with('\n'));
+    }
+
+    #[test]
+    fn keeps_optional_chaining_ternary_valid() {
+        let input = "\"this.playlist?.imageUrl ? 'url(' + this.playlist?.imageUrl + ')' : 'none'\"";
+        let options = json!({
+            "wrap_ternary": true,
+            "wrap_conditions_min": 2
+        });
+
+        let actual =
+            process_attribute_string(input, "style.background-image", &options, 0, 4, true)
+                .expect("ternary should still be recognized");
+        let inner = &actual[1..actual.len() - 1];
+
+        assert!(inner.contains("this.playlist?.imageUrl"));
+        assert!(inner.contains("? 'url(' + this.playlist?.imageUrl + ')'"));
+        assert!(inner.contains(": 'none'"));
+        assert!(!inner.contains("? .imageUrl"));
+    }
+
+    #[test]
+    fn normalizes_broken_optional_chain_spacing_in_multiline_binding() {
+        let input = "\"this.playlist\n\t\t? .imageUrl ? 'x' : 'none'\"";
+        let options = json!({
+            "wrap_ternary": true,
+            "wrap_conditions_min": 2
+        });
+
+        let actual =
+            process_attribute_string(input, "[style.background-image]", &options, 0, 4, true)
+                .expect("normalization should produce an update");
+        let inner = &actual[1..actual.len() - 1];
+
+        assert!(inner.contains("?.imageUrl"));
+        assert!(!inner.contains("playlist\n"));
+        assert!(!inner.contains("? .imageUrl"));
+    }
+
+    #[test]
+    fn wraps_multiline_ternary_in_bracket_binding_consistently() {
+        let input = "\"this.isFavorited()\n? 'fa-solid fa-star text-yellow-500'\n: 'fa-regular fa-star'\"";
+        let options = json!({
+            "wrap_ternary": true,
+            "wrap_conditions_min": 2
+        });
+
+        let actual = process_attribute_string(input, "[ngClass]", &options, 1, 4, true)
+            .expect("ternary should be normalized and wrapped");
+        let inner = &actual[1..actual.len() - 1];
+
+        assert_eq!(
+            inner,
+            "\n\t\t\tthis.isFavorited()\n\t\t\t? 'fa-solid fa-star text-yellow-500'\n\t\t\t: 'fa-regular fa-star'\n\t\t"
+        );
+    }
+
+    #[test]
+    fn wraps_object_literal_in_bracket_binding_as_block() {
+        let input = "\"{ invisible: !this.displayed, visible: this.displayed }\"";
+        let options = json!({
+            "wrap_conditions_min": 2,
+            "wrap_conditions_in_parens": true
+        });
+
+        let actual = process_attribute_string(input, "[ngClass]", &options, 1, 4, true)
+            .expect("object literal should be formatted");
+        let inner = &actual[1..actual.len() - 1];
+
+        assert!(inner.starts_with("\n\t\t\t{"));
+        assert!(inner.contains("\n\t\t\t\tinvisible: !this.displayed,"));
+        assert!(inner.contains("\n\t\t\t\tvisible: this.displayed"));
+        assert!(inner.ends_with("\n\t\t"));
     }
 }

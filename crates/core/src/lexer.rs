@@ -165,6 +165,32 @@ mod tests {
     }
 
     #[test]
+    fn test_multiline_commented_block_stays_single_comment_token() {
+        let input = "<!-- \n\t<div class=\"flex gap-4 p-4\">\n\t\t<button (click)=\"warning.visible = true\">warn</button>\n\t</div> -->";
+        let tokens = lex(input);
+
+        assert_eq!(tokens, vec![(Token::Comment, input)]);
+    }
+
+    #[test]
+    fn sample_file_keeps_tooltip_button_block_inside_comment_token() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("sample.html");
+        let input = std::fs::read_to_string(path).expect("read sample.html");
+        let tokens = lex(&input);
+
+        let has_comment = tokens.iter().any(|(kind, slice)| {
+            *kind == Token::Comment
+                && slice.contains("flex gap-4 p-4")
+                && slice.contains("(click)=\"warning.visible = true\"")
+        });
+        assert!(has_comment, "expected commented tooltip button block to remain a comment token");
+    }
+
+    #[test]
     fn test_raw_text() {
         let input = "hello, world! 你好!";
         let tokens = lex(input);

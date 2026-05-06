@@ -196,4 +196,5 @@ mod tests {
             "The rebuilt source text must be byte-for-byte identical to the original input."
         );
     }
+
 }

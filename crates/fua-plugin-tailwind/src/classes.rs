@@ -34,10 +34,10 @@ pub(crate) fn process_class_string(
     context: &HookContext<'_>,
 ) -> Option<String> {
     let (quote, inner) = quoted_inner(text)?;
-    let tokens = inner
-        .split_whitespace()
+    let tokens = split_class_tokens_preserving_interpolation(inner)
+        .into_iter()
         .enumerate()
-        .map(|(index, token)| ClassToken::new(token, index))
+        .map(|(index, token)| ClassToken::new(&token, index))
         .collect::<Vec<_>>();
 
     if tokens.is_empty() {
@@ -428,6 +428,46 @@ fn quote_multiline(
     out.push_str(close_indent);
     out.push(quote);
     out
+}
+
+fn split_class_tokens_preserving_interpolation(value: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let bytes = value.as_bytes();
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        while index < bytes.len() && bytes[index].is_ascii_whitespace() {
+            index += 1;
+        }
+        if index >= bytes.len() {
+            break;
+        }
+
+        if bytes[index] == b'{' && bytes.get(index + 1) == Some(&b'{') {
+            let start = index;
+            index += 2;
+            while index + 1 < bytes.len() {
+                if bytes[index] == b'}' && bytes[index + 1] == b'}' {
+                    index += 2;
+                    break;
+                }
+                index += 1;
+            }
+            let token = value[start..index].trim().to_string();
+            if !token.is_empty() {
+                tokens.push(token);
+            }
+            continue;
+        }
+
+        let start = index;
+        while index < bytes.len() && !bytes[index].is_ascii_whitespace() {
+            index += 1;
+        }
+        tokens.push(value[start..index].to_string());
+    }
+
+    tokens
 }
 
 const VARIANT_ORDER: &[&str] = &[

@@ -627,18 +627,28 @@ mod chunk_generative_tests {
         indent_size: usize,
         use_tabs: bool,
     ) -> String {
+        let quote_indent = if use_tabs {
+            "\t".repeat(current_indent + 1)
+        } else {
+            " ".repeat((current_indent + 1) * indent_size)
+        };
         let entry_indent = if use_tabs {
             "\t".repeat(current_indent + 2)
         } else {
             " ".repeat((current_indent + 2) * indent_size)
         };
-        let mut lines = vec!["{".to_string()];
+        let value_indent = if use_tabs {
+            "\t".repeat(current_indent + 3)
+        } else {
+            " ".repeat((current_indent + 3) * indent_size)
+        };
+        let mut lines = vec![format!("{entry_indent}{{")];
         for (index, (key, value)) in entries.iter().enumerate() {
             let suffix = if index + 1 == entries.len() { "" } else { "," };
-            lines.push(format!("{entry_indent}{key}: {value}{suffix}"));
+            lines.push(format!("{value_indent}{key}: {value}{suffix}"));
         }
         lines.push(format!("{entry_indent}}}"));
-        format!("\"{}\"", lines.join("\n"))
+        format!("\"\n{}\n{quote_indent}\"", lines.join("\n"))
     }
 
     #[test]

@@ -255,6 +255,7 @@ mod tests {
         let i1 = indent(1, cfg);
         let i2 = indent(2, cfg);
         let i3 = indent(3, cfg);
+        let i4 = indent(4, cfg);
 
         let condition_parts = split_condition(scenario.condition_expr);
         let should_wrap_condition = condition_parts.len().saturating_sub(1) >= cfg.wrap_conditions_min;
@@ -262,22 +263,20 @@ mod tests {
         let should_wrap_ngclass =
             scenario.ngclass_entries.len() >= cfg.ngclass_wrap_entries_min.max(1);
 
-        let mut lines = vec![
-            String::new(),
-            "<section>".to_string(),
-            format!("{i1}<div"),
-        ];
+        let mut lines = vec!["<section>".to_string(), format!("{i1}<div")];
         if should_wrap_ngclass {
-            lines.push(format!("{i2}[ngClass]=\"{{"));
+            lines.push(format!("{i2}[ngClass]=\""));
+            lines.push(format!("{i3}{{"));
             for (idx, (key, value)) in scenario.ngclass_entries.iter().enumerate() {
                 let suffix = if idx + 1 == scenario.ngclass_entries.len() {
                     ""
                 } else {
                     ","
                 };
-                lines.push(format!("{i3}{key}: {value}{suffix}"));
+                lines.push(format!("{i4}{key}: {value}{suffix}"));
             }
-            lines.push(format!("{i3}}}\""));
+            lines.push(format!("{i3}}}"));
+            lines.push(format!("{i2}\""));
         } else {
             let inline = scenario
                 .ngclass_entries

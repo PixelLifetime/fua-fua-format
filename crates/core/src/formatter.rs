@@ -73,7 +73,7 @@ mod tests {
     fn formats_plain_html_without_plugins() {
         let input = "<div id=\"app\">   <p>Hello <span>world</span></p></div>";
         let output = format_with_config(input, FormatterConfig::default());
-        let expected = "\n<div id=\"app\">\n  <p>\n    Hello <span>world</span>\n  </p>\n</div>";
+        let expected = "<div id=\"app\">\n  <p>\n    Hello <span>world</span>\n  </p>\n</div>";
         assert_eq!(output, expected);
     }
 
@@ -189,7 +189,7 @@ mod tests {
 
         assert_eq!(
             output,
-            "\n<title>\n  A title that is definitely too long to stay on one line\n</title>"
+            "<title>\n  A title that is definitely too long to stay on one line\n</title>"
         );
     }
 
@@ -205,7 +205,7 @@ mod tests {
 
         assert_eq!(
             output,
-            "\n<a\n  href=\"/x\"\n  data-id=\"123\"\n  aria-label=\"A descriptive label\"\n>\n  Link\n</a>"
+            "<a\n  href=\"/x\"\n  data-id=\"123\"\n  aria-label=\"A descriptive label\"\n>\n  Link\n</a>"
         );
     }
 
@@ -242,7 +242,7 @@ mod tests {
 
         assert_eq!(
             output,
-            "\n<a\n  href=\"/settings\"\n  class=\"\n    one\n    two\n  \"\n>\n  Link\n</a>"
+            "<a\n  href=\"/settings\"\n  class=\"\n    one\n    two\n  \"\n>\n  Link\n</a>"
         );
     }
 
@@ -260,7 +260,7 @@ mod tests {
 
         assert_eq!(
             output,
-            "\n<button\n  class=\"\n    flex flex-col\n    items-center px-4\n    py-2 text-sm\n  \"\n>\n</button>"
+            "<button\n  class=\"\n    flex flex-col\n    items-center px-4\n    py-2 text-sm\n  \"\n>\n</button>"
         );
     }
 
@@ -279,7 +279,7 @@ mod tests {
 
         let output = format_with_config(input, FormatterConfig::default());
 
-        assert_eq!(output, format!("\n{input}"));
+        assert_eq!(output, input);
     }
 
     #[test]
@@ -289,7 +289,7 @@ mod tests {
 
         let output = format_with_config(input, FormatterConfig::default());
 
-        assert_eq!(output, format!("\n{input}"));
+        assert_eq!(output, input);
     }
 
     #[test]
@@ -317,8 +317,56 @@ mod tests {
 
         assert_eq!(
             output,
-            "\n<div>\n  <script>\n    const sample = {\n      title: \"Keep JS raw\",\n      nested: { value: 123 }\n    };\n\n    function noop() {\n      return sample;\n    }\n  </script>\n\n  <style>\n    .custom-debug-box {\n      outline: 2px solid hotpink;\n    }\n  </style>\n</div>"
+            "<div>\n  <script>\n    const sample = {\n      title: \"Keep JS raw\",\n      nested: { value: 123 }\n    };\n\n    function noop() {\n      return sample;\n    }\n  </script>\n\n  <style>\n    .custom-debug-box {\n      outline: 2px solid hotpink;\n    }\n  </style>\n</div>"
         );
+    }
+
+    #[test]
+    fn collapses_blank_lines_immediately_after_open_tag() {
+        let input = "<span>\n\n\n{{ 'playlist' | translate }}\n</span>";
+        let output = format_with_config(
+            input,
+            FormatterConfig {
+                print_width: 20,
+                ..FormatterConfig::default()
+            },
+        );
+
+        assert_eq!(output, "<span>\n  {{ 'playlist' | translate }}\n</span>");
+    }
+
+    #[test]
+    fn keeps_class_interpolation_unchanged_when_class_wrapping_is_enabled() {
+        let input = r#"<div class="{{ this.getPositionClass() }} fixed p-1.5"></div>"#;
+        let output = format_with_config(
+            input,
+            FormatterConfig {
+                print_width: 200,
+                class_wrap_tokens_min: Some(1),
+                class_wrap_tokens_per_line: 2,
+                ..FormatterConfig::default()
+            },
+        );
+
+        assert!(output.contains("{{ this.getPositionClass() }}"));
+        assert!(!output.contains("{{\n"));
+        assert!(!output.contains("}}\n"));
+    }
+
+    #[test]
+    fn preserves_multiline_html_comment_block() {
+        let input = r#"<div></div>
+<!--
+<div class="flex gap-4 p-4">
+  <button (click)="warning.visible = true">warn</button>
+</div>
+-->
+<p>after</p>"#;
+        let output = format_with_config(input, FormatterConfig::default());
+
+        assert!(output.contains("<!--"));
+        assert!(output.contains("<button (click)=\"warning.visible = true\">warn</button>"));
+        assert!(output.contains("-->"));
     }
 
     struct ClassWrapScenario {
@@ -349,7 +397,7 @@ mod tests {
         let class_indent = indent(2, indent_size, use_tabs);
         let close_quote_indent = tag_indent.clone();
 
-        let mut out = String::from("\n<button\n");
+        let mut out = String::from("<button\n");
         out.push_str(&tag_indent);
         out.push_str("class=\"\n");
         for line in lines {
@@ -518,7 +566,7 @@ mod tests {
 
         let actual = format_with_config(&input, config);
         let expected = format!(
-            "\n<section>\n{}\n{}\n</section>",
+            "<section>\n{}\n{}\n</section>",
             generate_button_block(first, 2, 2),
             generate_button_block(second, 2, 2)
         );

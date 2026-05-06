@@ -59,6 +59,11 @@ impl FormatSession {
     pub(super) fn push_newlines_with_indent(&mut self, count: usize) {
         trim_trailing_horizontal_whitespace(&mut self.output);
 
+        if self.output.is_empty() {
+            self.push_current_indent();
+            return;
+        }
+
         let trailing_newlines = self
             .output
             .chars()

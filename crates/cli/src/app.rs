@@ -200,9 +200,44 @@ fn resolve_plugin_path(plugin_path: &Path, config_path: Option<&Path>) -> PathBu
 }
 
 fn run_engine(input: &str, config: FormatterConfig, plugins: &[PluginConfig]) -> CliResult<String> {
+    let (masked_input, comments) = mask_html_comments(input);
     let mut engine = FormatEngine::new(config);
     load_plugin_configs(&mut engine, plugins)?;
-    Ok(engine.format(input))
+    let formatted = engine.format(&masked_input);
+    Ok(restore_html_comments(formatted, &comments))
+}
+
+fn mask_html_comments(input: &str) -> (String, Vec<String>) {
+    let mut output = String::with_capacity(input.len());
+    let mut comments = Vec::new();
+    let mut cursor = 0usize;
+
+    while let Some(relative_start) = input[cursor..].find("<!--") {
+        let start = cursor + relative_start;
+        output.push_str(&input[cursor..start]);
+
+        let after_open = start + 4;
+        let end = input[after_open..]
+            .find("-->")
+            .map(|relative_end| after_open + relative_end + 3)
+            .unwrap_or(input.len());
+
+        comments.push(input[start..end].to_string());
+        let placeholder = format!("__FUA_COMMENT_BLOCK_{}__", comments.len() - 1);
+        output.push_str(&placeholder);
+        cursor = end;
+    }
+
+    output.push_str(&input[cursor..]);
+    (output, comments)
+}
+
+fn restore_html_comments(mut formatted: String, comments: &[String]) -> String {
+    for (index, comment) in comments.iter().enumerate() {
+        let placeholder = format!("__FUA_COMMENT_BLOCK_{index}__");
+        formatted = formatted.replace(&placeholder, comment);
+    }
+    formatted
 }
 
 fn load_plugin_configs(engine: &mut FormatEngine, plugins: &[PluginConfig]) -> CliResult<()> {
@@ -300,5 +335,16 @@ mod tests {
             plugins[2].path.as_deref().map(PathBuf::from),
             Some(PathBuf::from(r"C:\plugins\cli.wasm"))
         );
+    }
+
+    #[test]
+    fn comment_masking_round_trips_verbatim_comment_blocks() {
+        let input = "<div></div>\n<!-- \n<div class=\"flex gap-4 p-4\">x</div>\n-->\n<p>after</p>";
+        let (masked, comments) = mask_html_comments(input);
+        assert!(!masked.contains("<!--"));
+        assert_eq!(comments.len(), 1);
+
+        let restored = restore_html_comments(masked, &comments);
+        assert_eq!(restored, input);
     }
 }

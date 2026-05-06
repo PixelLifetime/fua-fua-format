@@ -1,373 +1,3585 @@
-@if (this.audioCollectionEditService.editableCollection) {
-<!-- Main collection container -->
-<main class="flex rounded-xl bg-cover bg-center"
-  [ngStyle]="this.imageUrl && !this.editingMode && this.audioCollectionEditService.editableCollection.imageId !== '00000000-0000-0000-0000-000000000000' ? {'background-image': this.getImageUrl()} : {}">
-  <div class="flex w-full flex-col justify-center rounded-xl p-4" [ngClass]="{'backdrop-brightness-50': this.imageUrl}">
-    <!-- Grid Layout Container -->
-    <div class="grid h-fit w-full grid-cols-4 gap-8">
-      <!-- Collection Info Area (3/4 width - col-span-3) -->
-      <div class="bg-tertiary-lighter-5% col-span-3 flex flex-col rounded-lg border-2 p-6" [ngClass]="{
-						'border-accent': this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges,
-						'border-quaternary': !(this.hasNameChanges || this.hasDescriptionChanges || this.hasImageChanges)
-					}">
-        <div class="absolute right-4 top-4 z-10">
-          <button class="btn-default btn-accent" (click)="this.saveAllChanges()">
-            {{ 'submitChanges' | translate }}
-          </button>
-        </div>
+<main>
+	<section class="flex flex-col">
+		<div class="mt-4 flex gap-2">
+			<!-- Button examples with Material Design styles -->
+			<button class="btn-default btn-primary">Primary</button>
+			<button class="btn-default btn-secondary">Secondary</button>
+			<button class="btn-default btn-tertiary">Tertiary</button>
+			<button class="btn-outline btn-primary">Outline</button>
+			<button
+				[disabled]="true"
+				class="btn-default btn-primary btn-disabled"
+			>
+				Disabled
+			</button>
+			<!-- Node Editor Toggle Button -->
+			<button
+				(click)="this.toggleNodeEditor()"
+				class="btn-default btn-primary bg-purple-600 text-white hover:bg-purple-700"
+			>
+				{{ showNodeEditor ? 'Hide' : 'Show' }} Node Editor
+			</button>
+		</div>
 
-        <!-- Success Message -->
-        @if (showSaveSuccess) {
-        <div class="absolute -top-3 right-4 z-10">
-          <div
-            class="animate-fadeIn flex items-center gap-2 rounded-lg bg-green-500 px-4 py-1.5 text-sm text-white shadow-md">
-            <i class="fa-solid fa-check"></i>
-            <span>Saved successfully</span>
-          </div>
-        </div>
-        }
+		<div class="flex flex-col gap-8">
+			<app-progressbar
+				[progress]="this.progress / 100"
+				[type]="'circular-determinate'"
+			></app-progressbar>
+			<app-progressbar></app-progressbar>
+			<app-progressbar [type]="'linear'"></app-progressbar>
+			<app-progressbar
+				[progress]="this.progress / 100"
+				[type]="'linear-determinate'"
+			></app-progressbar>
+			<app-progressbar
+				[progress]="this.progress / 100"
+				[buffer]="this.progress === 100 || this.progress === 0 ? this.progress / 100 : this.progress / 100 + 0.1"
+				[type]="'linear-buffer'"
+			></app-progressbar>
+		</div>
+	</section>
 
-        <div class="flex w-full justify-between">
-          @if (this.audioCollection) {
-          <div class="flex items-center space-x-2">
-            <i class="fa-regular fa-heart cursor-pointer"
-              [ngClass]="{'text-secondary': this.isCollectionLiked, 'text-quinary-darker-5%': !this.isCollectionLiked}"
-              (click)="this.likeAudioCollection()" (keyup.enter)="this.likeAudioCollection()" tabindex="0">
-            </i>
+	<div class="grid grid-cols-3 gap-8">
+		<div class="flex flex-col justify-between">
+			<p>Small</p>
+			<pixli-slider
+				[type]="'default'"
+				[size]="'small'"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Medium</p>
+			<pixli-slider
+				[type]="'default'"
+				[size]="'medium'"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Large</p>
+			<pixli-slider
+				[type]="'default'"
+				[size]="'large'"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Disabled</p>
+			<pixli-slider
+				[type]="'default'"
+				[size]="'large'"
+				[disabled]="true"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Discrete</p>
+			<pixli-slider
+				[type]="'discrete'"
+				[size]="'large'"
+				[min]="0"
+				[max]="100"
+				[step]="10"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Custom marks</p>
+			<pixli-slider
+				[type]="'marks'"
+				[size]="'large'"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Restricted</p>
+			<pixli-slider
+				[type]="'restricted'"
+				[size]="'large'"
+			></pixli-slider>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Range</p>
+			<pixli-slider
+				[type]="'range'"
+				[size]="'large'"
+				[(minValue)]="this.minRangeValue"
+				[(maxValue)]="this.maxRangeValue"
+			></pixli-slider>
+			<div class="flex justify-between">
+				<p>Minimum: {{ this.minRangeValue }}</p>
+				<p>Maximum: {{ this.maxRangeValue }}</p>
+			</div>
+		</div>
+		<div class="flex flex-col justify-between">
+			<p>Minimum-distance</p>
+			<pixli-slider
+				[type]="'minimum-distance'"
+				[size]="'large'"
+				[distance]="10"
+				[(minValue)]="this.minValue"
+				[(maxValue)]="this.maxValue"
+			></pixli-slider>
+			<div class="flex justify-between">
+				<p>Minimum: {{ this.minValue }}</p>
+				<p>Maximum: {{ this.maxValue }}</p>
+			</div>
+		</div>
+	</div>
 
-            <p class="text-md text-quinary-darker-5% cursor-pointer">
-              {{ this.audioCollection.likes }}
-            </p>
-          </div>
+	<div
+		class=""
+		infiniteScroll
+		(scrolledDown)="onScrolledDown()"
+	>
+		@for (playList of this.playLists; track playList) {
+			<div class="w-full cursor-pointer rounded-xl px-2 py-1 hover:bg-gray-700">
+				<a>
+					<h4 class="text-md font-semibold text-white">{{ playList }}</h4>
+					<p class="text-sm text-gray-200">Jeremy</p>
+				</a>
+			</div>
+		} @empty {
+			<span>Playlists are going to be here</span>
+		}
+	</div>
 
-          <div class="flex items-center space-x-2">
-            <i class="fa-solid fa-eye text-quinary-darker-5%"></i>
-            <p class="text-md cursor-pointer text-quinary-darker-5%">
-              {{ this.totalPlays }}
-            </p>
-          </div>
-          }
-        </div>
+	<div class="relative flex h-64 w-64 items-center justify-center">
+		<button
+			class="btn-default btn-secondary"
+			(click)="this.startLoading()"
+		>
+			BACKDROP LOADING TEST
+		</button>
+		<app-backdrop
+			[loading]="this.loading"
+			#backdrop
+		></app-backdrop>
+	</div>
+	<!-- 
+	<div class="flex gap-4 p-4">
+		<button
+			class="btn-default btn-tertiary"
+			(click)="warning.visible = true"
+			(keyup.enter)="warning.visible = true"
+			(click)="warning.visible = true"
+			(keyup.enter)="warning.visible = true"
+			tabindex="0"
+		>
+			warn
+		</button>
+		<button
+			class="btn-default btn-quaternary"
+			(click)="success.visible = true"
+			(keyup.enter)="success.visible = true"
+			(click)="success.visible = true"
+			(keyup.enter)="success.visible = true"
+			tabindex="0"
+		>
+			success
+		</button>
+		<button
+			class="btn-outline btn-quinary"
+			(click)="failed.visible = true"
+			(keyup.enter)="failed.visible = true"
+			(click)="failed.visible = true"
+			(keyup.enter)="failed.visible = true"
+			tabindex="0"
+		>
+			failed
+		</button>
+		<div class="w-24">
+			<pixli-slider
+				[value]="progress"
+				[max]="1"
+				[min]="0"
+			>
+			</pixli-slider>
+		</div>
+	</div> -->
 
-        <!-- Top Row: Name and Controls -->
-        <div class="mb-4 flex items-start justify-between">
-          <!-- Name Field -->
-          <div class="flex-1 text-white">
-            @if (this.isNameEditing) {
-            <input #nameInput type="text" [ngModel]="this.audioCollectionEditService.editableCollection.name"
-              (input)="handleNameChange($event)" class="w-full bg-transparent text-3xl font-semibold outline-none"
-              placeholder="Enter collection name" (blur)="finishNameEdit()" />
-            } @else {
-            <div class="relative flex items-center">
-              <h2 class="cursor-pointer truncate text-3xl font-semibold" (click)="startNameEdit()"
-                [title]="this.audioCollectionEditService.editableCollection.name || 'Enter collection name'"
-                (keyup.enter)="startNameEdit()" tabindex="0">
-                {{ this.audioCollectionEditService.editableCollection.name || 'Enter collection name' }}
-              </h2>
-              @if (this.hasNameChanges) {
-              <span class="text-accent ml-2" title="Name has unsaved changes">
-                <i class="fa-solid fa-circle-exclamation"></i>
-              </span>
-              }
-            </div>
-            }
-          </div>
+	<app-searchbar
+		[placeholder]="'Search for audio collections'"
+		[(searchQuery)]="this.query"
+	></app-searchbar>
 
-          <!-- Control Buttons -->
-          <div class="flex space-x-4">
-            <!-- Play/Stop Button -->
-            <button class="group flex flex-col items-center gap-1" tabindex="0"
-              [disabled]="!this.audioPlayerService.loaded" [class.opacity-50]="!this.audioPlayerService.loaded"
-              (click)="this.toggleAmbiencePreview()">
-              @if (this.isAmbiencePreviewPlaying) {
-              <i class="fa-regular fa-circle-stop text-3xl text-white transition-all group-hover:scale-110"></i>
-              <span class="text-xs text-gray-300">Stop</span>
-              } @else {
-              <i class="fa-regular fa-circle-play text-3xl text-white transition-all group-hover:scale-110"></i>
-              <span class="text-xs text-gray-300">Play</span>
-              }
-            </button>
+	<p>{{ this.query }}</p>
 
-            <!-- Generate Button -->
-            <button (click)="this.generateAmbience()" class="group flex flex-col items-center gap-1"
-              [disabled]="this.isLoadingAmbience" [class.opacity-50]="this.isLoadingAmbience">
-              <i class="fa-solid fa-wand-magic-sparkles text-3xl text-white transition-all group-hover:scale-110"></i>
-              <span class="text-xs text-gray-300">Generate</span>
-            </button>
+	<div class="w-full">
+		<div class="h-[500px] w-full">
+			<app-checkered-canvas
+				[splinePoints]="this.splinePoints"
+				[playbackOffset]="10"
+				[totalDuration]="50"
+			>
+			</app-checkered-canvas>
+		</div>
 
-            <!-- Download Button - Only show when ambience is generated -->
-            @if (this.generatedAmibienceUrl && !this.isLoadingAmbience) {
-            <button (click)="this.export()" class="group flex flex-col items-center gap-1">
-              <i class="fa-solid fa-download text-3xl text-white transition-all group-hover:scale-110"></i>
-              <span class="text-xs text-gray-300">Download</span>
-            </button>
-            }
-          </div>
-        </div>
+		<button
+			class="btn-default btn-primary"
+			(click)="this.getResult(2, 4)"
+		>
+			log
+		</button>
+		<!--
+<app-timeline [timeline]="this.timeline"> </app-timeline> -->
 
-        <!-- Mid Row: Description -->
-        <div class="relative mb-4 flex-1">
-          @if (this.isDescriptionEditing) {
-          <textarea #descriptionInput [ngModel]="this.audioCollectionEditService.editableCollection.description"
-            (input)="handleDesciptionChange($event)"
-            class="h-24 w-full resize-none overflow-y-auto bg-transparent text-lg text-gray-200 outline-none"
-            placeholder="Enter collection description" (blur)="finishDescriptionEdit()"></textarea>
-          } @else {
-          <div class="relative h-24 overflow-y-auto">
-            <p class="cursor-pointer break-words text-lg text-gray-200" (click)="startDescriptionEdit()"
-              (keyup.enter)="startDescriptionEdit()" tabindex="0">
-              {{ this.audioCollectionEditService.editableCollection.description || 'Enter collection description' }}
-            </p>
-            @if (this.hasDescriptionChanges) {
-            <span class="text-accent absolute right-0 top-0 mr-1" title="Description has unsaved changes">
-              <i class="fa-solid fa-circle-exclamation"></i>
-            </span>
-            }
-          </div>
-          }
-        </div>
+		<!--
+<app-timeline [timeline]="this.timeline"> </app-timeline> -->
 
-        <!-- Bottom Row: Waveform or Loading Area -->
-        <div class="flex h-24 flex-col gap-3">
-          <!-- Loading Progress or Waveform -->
-          @if (this.isLoadingAmbience) {
-          <div class="flex w-full flex-col gap-2">
-            <p class="text-lg text-white">{{ this.getLoadingStage() }}</p>
-            <div class="h-2 w-full">
-              <app-progressbar [progress]="this.ambienceLoadingProgress / 5"
-                [buffer]="this.ambienceLoadingProgress === 5 || this.ambienceLoadingProgress === 0 ? this.ambienceLoadingProgress / 5 : this.ambienceLoadingProgress / 5 + 0.1"
-                [type]="'linear-buffer'"></app-progressbar>
-            </div>
-          </div>
-          } @else {
-          <div class="relative">
-            <!-- Empty state when no ambience -->
-            @if (!this.generatedAmibienceUrl) {
-            <div
-              class="bg-tertiary-lighter-10% flex h-24 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-600">
-              <p class="text-gray-400">
-                <i class="fa-solid fa-wave-square mr-2"></i>
-                Click "Generate" to create your ambience
-              </p>
-            </div>
-            }
-          </div>
-          }
-          <!-- Actual waveform when generated -->
-          <div #waveform class="h-24 w-full" [class.hidden]="!this.generatedAmibienceUrl"></div>
-        </div>
-      </div>
+		<pixli-snackbar
+			#warning
+			[visible]="this.visible"
+			[position]="'top-right'"
+			[appearence]="'fixed'"
+		>
+			<i
+				icon
+				class="fa-solid fa-circle-info text-lg text-yellow-500"
+			></i>
+			<div class="flex w-full rounded-xl bg-gray-800 p-4 px-12">
+				<p class="text-yellow-500">Sorry, you are a sluha narodu party member, you can't make this request</p>
+			</div>
+		</pixli-snackbar>
 
-      <!-- Image Upload Area (1/4 width - col-span-1) -->
-      <div dropZone (filesDropped)="this.onImageFileDropped($event)" [ngClass]="{
-						'border-accent': this.hasImageChanges,
-						'border-quaternary': !this.hasImageChanges
-					}"
-        class="bg-tertiary-lighter-5% relative col-span-1 flex flex-col items-center justify-center rounded-lg border-2">
-        <!-- Current Image Preview or Upload UI -->
-        <div class="flex h-full w-full flex-col items-center justify-center">
-          <!-- Show image if exists -->
-          @if (this.imageUrl && this.audioCollectionEditService.editableCollection.imageId !==
-          '00000000-0000-0000-0000-000000000000') {
-          <div class="relative h-full w-full">
-            <img [src]="this.imageUrl" class="h-full w-full rounded-lg object-cover" alt="Collection image" />
-            <div
-              class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black bg-opacity-50 opacity-0 transition-opacity hover:opacity-100">
-              <i class="fa-solid fa-cloud-arrow-up mb-2 text-xl text-white"></i>
-              <p class="mb-2 text-sm text-white">Replace image</p>
-              <label for="file"
-                class="btn-default hover:bg-primary-lighter cursor-pointer rounded-full bg-primary px-3 py-1 text-xs text-white">Choose
-                file</label>
-            </div>
-          </div>
-          } @else {
-          <!-- Upload UI if no image -->
-          <div class="flex h-full flex-col items-center justify-center p-4 text-white">
-            <i class="fa-solid fa-cloud-arrow-up text-danger mb-4 text-2xl"></i>
-            <p class="mb-3 text-center text-sm">{{ 'dragAndDropFiles' | translate }}</p>
+		<pixli-snackbar
+			#success
+			[visible]="this.visible"
+			[position]="'top-left'"
+			[appearence]="'fixed'"
+		>
+			<i
+				icon
+				class="fa-solid fa-check text-lg text-green-500"
+			></i>
+			<div class="bg-quaternary-darker-10% flex w-full rounded-xl p-4 px-12">
+				<p class="text-green-500">Your vote has been successfuly accepted</p>
+			</div>
+		</pixli-snackbar>
 
-            <div class="my-1 flex w-full items-center justify-center">
-              <hr class="border-quinary w-1/3" />
-              <span class="text-quinary px-2 text-xs">or</span>
-              <hr class="border-quinary w-1/3" />
-            </div>
+		<pixli-snackbar
+			#failed
+			[visible]="this.visible"
+			[position]="'bottom-right'"
+			[appearence]="'fixed'"
+		>
+			<div class="bg-quaternary-darker-10% rounded-xl p-4 px-12">
+				<p class="text-red-500">Oooops, something went wrong</p>
+			</div>
+		</pixli-snackbar>
 
-            <label for="file" class="btn-default btn-secondary mt-3 px-4 py-1.5 text-sm transition-colors">Choose
-              file</label>
-            <p class="text-quinary mt-3 text-xs">Max size: 16MB</p>
-          </div>
-          }
-        </div>
+		<div class="flex">
+			<button (click)="this.triggerError()">Error</button>
+			<button (click)="this.triggerWarn()">Warn</button>
+			<button (click)="this.triggerSuccess()">Success</button>
+		</div>
 
-        <input (change)="this.handleImageFileUpload($event)" accept=".png,.jpg,.jpeg,.hvc" type="file" name="file"
-          id="file" class="hidden" />
+		<pixli-tag-input
+			inputClassName="input-default input-quaternary"
+			suggestionsContainerClassName="bg-quaternary"
+			class="block w-64"
+		></pixli-tag-input>
 
-        <!-- Mark as changed if needed -->
-        @if (this.hasImageChanges) {
-        <div class="text-accent absolute right-2 top-2">
-          <i class="fa-solid fa-circle-exclamation"></i>
-        </div>
-        }
-      </div>
+<!-- Inputs Color Theme Showcase -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h2 class="mb-4 text-xl text-on-surface">Input Color Theme Showcase</h2>
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+		<!-- Primary -->
+		<div>
+			<label
+				for="primary-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Primary</label
+			>
+			<input
+				id="primary-input"
+				type="text"
+				placeholder="Primary"
+				class="input-default input-primary w-full"
+			/>
+		</div>
+		<!-- Secondary -->
+		<div>
+			<label
+				for="secondary-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Secondary</label
+			>
+			<input
+				id="secondary-input"
+				type="text"
+				placeholder="Secondary"
+				class="input-default input-secondary w-full"
+			/>
+		</div>
+		<!-- Tertiary -->
+		<div>
+			<label
+				for="tertiary-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Tertiary</label
+			>
+			<input
+				id="tertiary-input"
+				type="text"
+				placeholder="Tertiary"
+				class="input-default input-tertiary w-full"
+			/>
+		</div>
+		<!-- Quaternary -->
+		<div>
+			<label
+				for="quaternary-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Quaternary</label
+			>
+			<input
+				id="quaternary-input"
+				type="text"
+				placeholder="Quaternary"
+				class="input-default input-quaternary w-full"
+			/>
+		</div>
+		<!-- Quinary -->
+		<div>
+			<label
+				for="quinary-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Quinary</label
+			>
+			<input
+				id="quinary-input"
+				type="text"
+				placeholder="Quinary"
+				class="input-default input-quinary w-full"
+			/>
+		</div>
+		<!-- Accent (if available) -->
+		<div>
+			<label
+				for="accent-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Accent</label
+			>
+			<input
+				id="accent-input"
+				type="text"
+				placeholder="Accent"
+				class="input-default input-accent w-full"
+			/>
+		</div>
+		<!-- Disabled -->
+		<div>
+			<label
+				for="disabled-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Disabled</label
+			>
+			<input
+				id="disabled-input"
+				type="text"
+				placeholder="Disabled"
+				class="input-default input-primary w-full"
+				disabled
+			/>
+		</div>
+		<!-- Error -->
+		<div>
+			<label
+				for="error-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Error</label
+			>
+			<input
+				id="error-input"
+				type="text"
+				placeholder="Error"
+				class="input-default input-primary input-error w-full"
+				value="Error input text"
+			/>
+		</div>
+		<!-- With Left Icon -->
+		<div>
+			<label
+				for="left-icon-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>With Left Icon</label
+			>
+			<div class="input-group">
+				<span class="input-icon input-icon-left">
+					<i class="fa-solid fa-search"></i>
+				</span>
+				<input
+					id="left-icon-input"
+					type="text"
+					placeholder="Search..."
+					class="input-default input-primary input-with-icon-left w-full"
+				/>
+			</div>
+		</div>
+		<!-- With Right Icon -->
+		<div>
+			<label
+				for="right-icon-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>With Right Icon</label
+			>
+			<div class="input-group">
+				<input
+					id="right-icon-input"
+					type="text"
+					placeholder="Email..."
+					class="input-default input-primary input-with-icon-right w-full"
+				/>
+				<span class="input-icon input-icon-right">
+					<i class="fa-solid fa-envelope"></i>
+				</span>
+			</div>
+		</div>
+		<!-- Outline Variant -->
+		<div>
+			<label
+				for="outline-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Outline Variant</label
+			>
+			<input
+				id="outline-input"
+				type="text"
+				placeholder="Outline input"
+				class="input-outline input-primary w-full"
+			/>
+		</div>
+		<!-- Large Input -->
+		<div>
+			<label
+				for="large-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Large Input</label
+			>
+			<input
+				id="large-input"
+				type="text"
+				placeholder="Large input"
+				class="input-default input-primary input-lg w-full"
+			/>
+		</div>
+		<!-- Small Input -->
+		<div>
+			<label
+				for="small-input"
+				class="mb-1 block text-sm font-medium text-on-surface"
+				>Small Input</label
+			>
+			<input
+				id="small-input"
+				type="text"
+				placeholder="Small input"
+				class="input-default input-primary input-sm w-full"
+			/>
+		</div>
+	</div>
+</section>
 
-      <!-- Timeline Panel (3/4 width - col-span-3) -->
-      <div class="bg-tertiary-lighter-5% relative col-span-3 flex flex-col gap-8 rounded-lg border-2 p-6" [ngClass]="{
-						'border-quaternary': !this.audioCollectionEditService.changes['presets'] || !this.audioCollectionEditService.changes['audioList'] || !this.audioCollectionEditService.changes['timeline'],
-						'border-accent': this.audioCollectionEditService.changes['presets'] && this.audioCollectionEditService.changes['audioList'] && this.audioCollectionEditService.changes['timeline']
-					}">
-        <!-- Main Panel Save Button (absolute position) -->
-        @if (this.audioCollectionEditService.changes['presets'] && this.audioCollectionEditService.changes['audioList']
-        && this.audioCollectionEditService.changes['timeline']) {
-        <button (click)="saveAllChanges()"
-          class="btn-default btn-accent absolute -top-3 right-3 z-10 flex items-center space-x-2 px-3 py-1.5 text-sm">
-          <i class="fa-solid fa-save mr-2"></i>
-          <span>Save All Changes</span>
-        </button>
-        }
+		<div class="flex flex-wrap gap-4 p-8">
+			<div class="bg-unset h-64 w-64 text-secondary">UNSET→</div>
+			<div class="text-unset h-64 w-64 bg-primary">PRIMARY→</div>
+			<div class="h-64 w-64 bg-tertiary text-primary">TERTIARY→</div>
+			<div class="bg-quaternary h-64 w-64 text-tertiary">QUATERNARY→</div>
+			<div class="bg-quinary text-quaternary h-64 w-64">QUINARY→</div>
+			<div class="bg-accent text-quinary h-64 w-64">ACCENT→</div>
+			<div class="text-accent h-64 w-64 bg-secondary">SECONDARY→</div>
+		</div>
 
-        <!-- Section Header -->
-        <div class="border-tertiary-lighter-20% flex items-center justify-between border-b pb-4">
-          <div class="flex flex-col">
-            <h3 class="text-quinary text-xl font-semibold">Timeline & Audio Groups</h3>
-            <p class="text-quinary-darker-10% text-sm">Manage your video timeline and audio tracks</p>
-          </div>
-        </div>
+		<div class="grid grid-cols-4 gap-8">
+			<app-tooltip [position]="'bottom'">
+				<div content>Ця кнопка робить таоаоаоао , а потім</div>
+				<div class="w-fit">
+					<div>bottom</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'top'">
+				<div content>message</div>
+				<div class="w-fit">
+					<div>top</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'left'">
+				<div content>message</div>
+				<div class="w-fit">
+					<div>left</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'right'">
+				<div content>message dsd asd asd asdasd asdsadasd asd asd asd saddf</div>
+				<div class="w-fit">
+					<div>right</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'top-left'">
+				<div content>message asdas das das dasdasd asdasd asdasdasd asd</div>
+				<div class="w-fit">
+					<div>top-left</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'top-right'">
+				<div content>
+					<pixli-slider
+						[type]="'minimum-distance'"
+						[size]="'large'"
+						[distance]="10"
+						[(minValue)]="this.minValue"
+						[(maxValue)]="this.maxValue"
+					></pixli-slider>
+				</div>
+				<div class="w-fit">
+					<div>top-right</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'bottom-left'">
+				<div content>message</div>
+				<div class="w-fit">
+					<div>bottom-left</div>
+				</div>
+			</app-tooltip>
+			<app-tooltip [position]="'bottom-right'">
+				<div content>message dsd asdas dasd asdad</div>
+				<div class="w-fit">
+					<div>bottom-right</div>
+				</div>
+			</app-tooltip>
+		</div>
 
-        <!-- Audio Groups Panel -->
-        <div class="bg-tertiary-lighter-10% relative flex flex-col gap-4 rounded-lg border p-4" [ngClass]="{
-							'border-accent': this.audioCollectionEditService.changes['presets'] || this.audioCollectionEditService.changes['audioList'],
-							'border-tertiary-lighter-20%': !this.audioCollectionEditService.changes['presets'] && !this.audioCollectionEditService.changes['audioList']
-						}">
-          <!-- Presets Component -->
-          <app-presets [presets]="this.audioCollectionEditService.editableCollection.presets"
-            [selectedPresetId]="this.audioCollectionEditService.selectedPreset!.id"
-            [audioList]="this.audioCollectionEditService.editableCollection.audioList"
-            [originalAudioCollection]="this.audioCollection" [canSave]="!this.hasAudiosCountChanges()"
-            (presetAdd)="this.addPreset()" (presetSave)="this.savePresetChanges()"></app-presets>
+		<div class="h-64 w-64 bg-blue-500">
+			<button (click)="this.initMockCollection()">set</button>
+			<button (click)="this.papierosik()">edit</button>
+			<button
+				class="btn-default btn-accent"
+				(click)="this.logChanges()"
+			>
+				Log Changes
+			</button>
+			<button
+				class="btn-default btn-primary"
+				(click)="this.initMockCollection()"
+			>
+				Init Mock Collection
+			</button>
+			<button
+				class="btn-default btn-tertiary"
+				(click)="this.testArrayChanges()"
+			>
+				Test Array Changes
+			</button>
+			<button
+				class="btn-default btn-secondary"
+				(click)="this.testArrayChangeApproaches()"
+			>
+				Compare Array Approaches
+			</button>
+		</div>
 
-          <!-- Presets Save Button (absolute position) -->
-          @if (this.audioCollectionEditService.changes['presets'] &&
-          !this.audioCollectionEditService.changes['audioList']) {
-          <button (click)="savePresetChanges()"
-            class="btn-default btn-accent absolute right-4 top-4 flex items-center space-x-2 px-3 py-1.5 text-sm">
-            <i class="fa-solid fa-save mr-1"></i>
-            <span>Save Preset Changes</span>
-          </button>
-          }
+		<div class="grid grid-cols-3 gap-4">
+			<app-alert
+				[message]="'This is an informational message that can be quite long and will wrap to multiple lines when needed. It contains important details that the user should be aware of.'"
+				[title]="'Information'"
+				[type]="'info'"
+			></app-alert>
+			<app-alert
+				[message]="'This is a warning message that can be quite long and will wrap to multiple lines when needed. It contains important cautions that the user should pay attention to.'"
+				[title]="'Warning'"
+				[type]="'warn'"
+			></app-alert>
+			<app-alert
+				[message]="'This is an error message that can be quite long and will wrap to multiple lines when needed. It contains important details that the user should be aware of.'"
+				[title]="'Error'"
+				[type]="'error'"
+			></app-alert>
+		</div>
 
-          <!-- Audio Groups Component -->
-          <app-audio-groups [audioGroups]="this.audioCollectionEditService.editableCollection.audioList"
-            [activeAudioGroupId]="activeAudioGroupId" (addAudioGroup)="addEmptyAudioGroup()"
-            (saveAudioGroupChanges)="saveAudioGroupChanges()" (setActiveAudioGroup)="setActiveAudioGroup($event)"
-            (audioVolumeChange)="handleAudioVolumeChange($event)" (audioMuteChange)="handleAudioMuteChange($event)"
-            (audioPlaybackOffsetChange)="handleAudioPlaybackOffsetChange($event)"
-            (audioProbabilityChange)="handleAudioProbabilityChange($event)"
-            (deleteAudioGroup)="deleteAudioGroupFromCollection($event)"
-            (deleteAudioFile)="deleteAudioFileFromCollection($event)" (nameChange)="handleGroupNameChange($event)"
-            (audioGroupRefsChange)="handleAudioGroupRefsChange($event)"></app-audio-groups>
-        </div>
+		@if (collectionService.editableCollection) {
+			<div class="collection-container">
+				<h2>Collection Editor</h2>
 
-        <div class="bg-tertiary-lighter-10% relative flex flex-col gap-4 rounded-lg border p-4" [ngClass]="{
-							'border-accent': this.audioCollectionEditService.changes['timeline'],
-							'border-tertiary-lighter-20%': !this.audioCollectionEditService.changes['timeline']
-						}">
-          <!-- Timeline Save Button (absolute position) -->
-          @if (this.audioCollectionEditService.changes['timeline'] &&
-          !this.audioCollectionEditService.changes['presets'] && !this.audioCollectionEditService.changes['audioList'])
-          {
-          <button (click)="saveTimelineChanges()"
-            class="btn-default btn-accent absolute -top-3 right-3 z-10 flex items-center space-x-2 px-3 py-1.5 text-sm">
-            <i class="fa-solid fa-save mr-1"></i>
-            <span>Save Timeline Changes</span>
-          </button>
-          }
+				<!-- Name -->
+				<p [class.changed]="hasFieldChanged('name')">
+					Name: {{ collectionService.editableCollection.name }}
+					@if (hasFieldChanged('name')) {
+						<span class="changed-label">(Changed)</span>
+					}
+				</p>
+				<input
+					type="text"
+					#nameInput
+					placeholder="New Name"
+				/>
+				<button (click)="updateName(nameInput.value); nameInput.value = ''">Update Name</button>
 
-          <!-- Video Preview and Timeline Container -->
-          <app-timeline (timelineChange)="handleTimelineChange($event)"
-            [timeline]="this.audioCollectionEditService.editableCollection!.timeline" [timelineLength]="120000">
-          </app-timeline>
-        </div>
+				<!-- Description -->
+				<p [class.changed]="hasFieldChanged('description')">
+					Description: {{ collectionService.editableCollection.description }}
+					@if (hasFieldChanged('description')) {
+						<span class="changed-label">(Changed)</span>
+					}
+				</p>
+				<input
+					type="text"
+					#descInput
+					placeholder="New Description"
+				/>
+				<button (click)="updateDescription(descInput.value); descInput.value = ''">Update Description</button>
 
-        <button class="btn-default btn-accent" (click)="this.logChanges()">
-          Log Changes
-        </button>
-      </div>
+				<!-- Image -->
+				<p [class.changed]="hasFieldChanged('imageId')">
+					Image: {{ collectionService.editableCollection.imageId }}
+					@if (hasFieldChanged('imageId')) {
+						<span class="changed-label">(Changed)</span>
+					}
+				</p>
+				<input
+					type="text"
+					#imageInput
+					placeholder="New Image ID"
+				/>
+				<button (click)="updateImage(imageInput.value); imageInput.value = ''">Update Image</button>
 
-      <!-- Audio Library Panel (1/4 width - col-span-1) -->
-      <div class="border-quaternary bg-tertiary-lighter-5% col-span-1 flex flex-col gap-4 rounded-lg border-2 p-6">
-        <!-- Library Header -->
-        <div class="flex flex-col gap-2">
-          <h3 class="text-quinary text-xl font-semibold">Audio Library</h3>
-          <p class="text-quinary-darker-10% text-sm">
-            @if (activeAudioGroupId) {
-            Adding audio to selected group
-            } @else {
-            Search and add audio files to your collection
-            }
-          </p>
-        </div>
+				<!-- Presets -->
+				<p [class.changed]="hasFieldChanged('presets') || hasArrayLengthChanged('presets')">
+					Number of Presets: {{ collectionService.editableCollection.presets.length }}
+					@if (hasArrayLengthChanged('presets')) {
+						<span class="changed-label">(Added/Removed)</span>
+					}
+					@if (hasFieldChanged('presets')) {
+						<span class="changed-label">(Properties Changed)</span>
+					}
+				</p>
 
-        <!-- Search Input -->
-        <div class="text-quinary group flex w-full">
-          <input type="text" placeholder="Search"
-            class="input-default input-primary w-5/6 rounded-xl rounded-r-none border-r-0"
-            [(ngModel)]="this.searchQuery" (ngModelChange)="this.initiateSearch()"
-            (keyup.enter)="this.initiateSearch()" />
-          <div
-            class="bg-primary-lighter group-focus-within:bg-primary-lighter-10% flex w-1/6 cursor-pointer items-center justify-center rounded-r-lg"
-            (click)="this.initiateSearch()" (keyup.enter)="this.initiateSearch()" tabindex="0">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </div>
-        </div>
+				<!-- Add preset -->
+				<div class="form-row">
+					<input
+						type="text"
+						#presetName
+						placeholder="Preset Name"
+					/>
+					<input
+						type="text"
+						#presetDesc
+						placeholder="Preset Description"
+					/>
+					<button (click)="addPreset(presetName.value, presetDesc.value); presetName.value = ''; presetDesc.value = ''">Add Preset</button>
+				</div>
 
-        <!-- Search Results Panel -->
-        <div class="border-tertiary-lighter-20% bg-tertiary-lighter-10% flex h-full flex-col rounded-lg border p-4">
-          <div class="mb-4 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <h4 class="text-quinary text-lg font-medium">Results</h4>
-            </div>
-          </div>
+				<!-- Preset list and edit capabilities -->
+				<div class="preset-list">
+					@for (preset of collectionService.editableCollection.presets; track preset.id; let i = $index) {
+						<div
+							class="preset-item"
+							[class.changed]="isPresetChanged(i)"
+						>
+							<div class="preset-header">
+								<span class="preset-name">{{ i + 1 }}. {{ preset.name }}</span>
+								<button
+									class="remove-button"
+									(click)="removePreset(i)"
+								>
+									Remove
+								</button>
+							</div>
 
-          <!-- Search Results List -->
-          <pixli-scroll-view visibilityState="always"
-            class="bg-tertiary-lighter-5% h-full w-full overflow-hidden rounded-lg py-2">
-            @if (isLoadingSearchedAudioCollections) {
-            <!-- Loading Skeletons -->
-            <div class="flex flex-col gap-3">
-              @for (skeleton of this.repeatSkeleton; track skeleton) {
-              <app-audio-file-card-skeleton></app-audio-file-card-skeleton>
-              }
-            </div>
-            } @else {
-            @if (this.searchedAudioFiles && this.searchedAudioFiles.length > 0) {
-            <!-- Audio Files List -->
-            <div class="flex flex-col gap-2 px-2">
-              @for (audioFile of this.searchedAudioFiles; track audioFile) {
-              <app-audio-file-card [audioFile]="audioFile">
-                @if (activeAudioGroupId) {
-                <button toolbar-right tabindex="0"
-                  (click)="this.addAudioToCollection(audioFile.audioMetadata.audioId, activeAudioGroupId)"
-                  (keyup.enter)="this.addAudioToCollection(audioFile.audioMetadata.audioId, activeAudioGroupId)"
-                  class="btn-default btn-secondary flex aspect-square h-8 w-8 items-center justify-center rounded-full">
-                  <i class="fa-solid fa-plus text-xs"></i>
-                </button>
-                }
-              </app-audio-file-card>
-              }
-            </div>
-            } @else {
-            <!-- Empty State -->
-            <div class="text-quinary-darker-20% flex h-full flex-col items-center justify-center gap-3 py-8">
-              <i class="fa-solid fa-music text-4xl opacity-50"></i>
-              <p class="text-center">No audio files found</p>
-              <p class="text-center text-sm">Try adjusting your search terms</p>
-            </div>
-            }
-            }
-          </pixli-scroll-view>
-        </div>
-      </div>
-    </div>
-  </div>
+							<div class="preset-properties">
+								<div class="property-row">
+									<!-- <label>Name:</label> -->
+									<input
+										type="text"
+										[value]="preset.name"
+										#presetNameInput
+										(change)="updatePresetProperty(i, 'name', presetNameInput.value)"
+									/>
+								</div>
+
+								<div class="property-row">
+									<!-- <label>Description:</label> -->
+									<input
+										type="text"
+										[value]="preset.description"
+										#presetDescInput
+										(change)="updatePresetProperty(i, 'description', presetDescInput.value)"
+									/>
+								</div>
+							</div>
+						</div>
+					}
+				</div>
+
+				<!-- Tracks -->
+				<p [class.changed]="hasFieldChanged('timeline.tracks') || hasArrayLengthChanged('timeline.tracks')">
+					Number of Tracks: {{ collectionService.editableCollection.timeline.tracks.length }}
+					@if (hasArrayLengthChanged('timeline.tracks')) {
+						<span class="changed-label">(Added/Removed)</span>
+					}
+					@if (hasFieldChanged('timeline.tracks')) {
+						<span class="changed-label">(Properties Changed)</span>
+					}
+				</p>
+
+				<!-- Add track -->
+				<div class="form-row">
+					<input
+						type="text"
+						#trackId
+						placeholder="Track ID"
+					/>
+					<button (click)="addTrack(trackId.value); trackId.value = ''">Add Track</button>
+				</div>
+
+				<!-- Track list with remove capability -->
+				<div class="track-list">
+					@for (track of collectionService.editableCollection.timeline.tracks; track track; let i = $index) {
+						<div
+							class="track-item"
+							[class.changed]="isTrackChanged(i)"
+						>
+							<div class="track-header">
+								<span>{{ i + 1 }}. Track</span>
+								<button
+									class="remove-button"
+									(click)="removeTrack(i)"
+								>
+									Remove
+								</button>
+							</div>
+
+							<div class="track-properties">
+								<div class="property-row">
+									<!-- <label>Group ID:</label> -->
+									<input
+										type="text"
+										[value]="track.audioGroupId"
+										#trackGroupIdInput
+										(change)="updateTrackProperty(i, 'audioGroupId', trackGroupIdInput.value)"
+									/>
+								</div>
+
+								<div class="property-row">
+									<!-- <label>Start Position:</label> -->
+									<input
+										type="number"
+										[value]="track.timelineStartPosition"
+										#trackStartPosInput
+										(change)="updateTrackProperty(i, 'timelineStartPosition', trackStartPosInput.value)"
+									/>
+								</div>
+
+								<div class="property-row">
+									<!-- <label>Interval:</label> -->
+									<input
+										type="number"
+										[value]="track.interval"
+										#trackIntervalInput
+										(change)="updateTrackProperty(i, 'interval', trackIntervalInput.value)"
+									/>
+								</div>
+							</div>
+						</div>
+					}
+				</div>
+
+				<!-- Audio Groups -->
+				<p [class.changed]="hasFieldChanged('audioList') || hasArrayLengthChanged('audioList')">
+					Number of Audio Groups: {{ collectionService.editableCollection.audioList.length }}
+					@if (hasArrayLengthChanged('audioList')) {
+						<span class="changed-label">(Added/Removed)</span>
+					}
+					@if (hasFieldChanged('audioList')) {
+						<span class="changed-label">(Properties Changed)</span>
+					}
+				</p>
+
+				<!-- Add audio group -->
+				<div class="form-row">
+					<input
+						type="text"
+						#groupName
+						placeholder="Audio Group Name"
+					/>
+					<button (click)="addAudioGroup(groupName.value); groupName.value = ''">Add Audio Group</button>
+				</div>
+
+				<!-- Audio group list with remove capability -->
+				<div class="audio-group-list">
+					@for (group of collectionService.editableCollection.audioList; track group.id; let i = $index) {
+						<div
+							class="audio-group-item"
+							[class.changed]="isAudioGroupChanged(i)"
+						>
+							<div class="group-header">
+								<span>{{ i + 1 }}. {{ group.name }}</span>
+								<button
+									class="remove-button"
+									(click)="removeAudioGroup(i)"
+								>
+									Remove
+								</button>
+							</div>
+
+							<div class="group-properties">
+								<div class="property-row">
+									<!-- <label>Name:</label> -->
+									<input
+										type="text"
+										[value]="group.name"
+										#groupNameInput
+										(change)="updateAudioGroupProperty(i, 'name', groupNameInput.value)"
+									/>
+								</div>
+
+								<div class="property-row">
+									<!-- <label>Volume:</label> -->
+									<input
+										type="number"
+										[value]="group.volume"
+										min="0"
+										max="1"
+										step="0.1"
+										#groupVolumeInput
+										(change)="updateAudioGroupProperty(i, 'volume', groupVolumeInput.value)"
+									/>
+								</div>
+
+								<div class="property-row">
+									<!-- <label>Muted:</label> -->
+									<input
+										type="checkbox"
+										[checked]="group.muted"
+										#groupMutedInput
+										(change)="updateAudioGroupProperty(i, 'muted', groupMutedInput.checked)"
+									/>
+								</div>
+							</div>
+						</div>
+					}
+				</div>
+			</div>
+		}
+	</div>
+	<section class="h-full w-full p-10">
+		<h2 class="mb-4 text-2xl font-bold">Settings</h2>
+
+		<pixli-accordion-showcase></pixli-accordion-showcase>
+	</section>
+	<!-- Material Design Color Showcase -->
+	<section class="my-10 rounded-lg bg-surface p-6">
+		<h1 class="mb-6 text-2xl text-on-surface">Material Design Color Showcase</h1>
+
+		<!-- Role-based Colors -->
+		<div class="mb-8">
+			<h2 class="mb-4 text-xl text-on-surface">Role-based Colors</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="flex flex-col items-center justify-center rounded-lg bg-primary p-6">
+					<span class="text-lg font-bold text-on-primary">Primary</span>
+					<span class="text-sm text-on-primary">--primary</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg bg-secondary p-6">
+					<span class="text-lg font-bold text-on-secondary">Secondary</span>
+					<span class="text-sm text-on-secondary">--secondary</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg bg-tertiary p-6">
+					<span class="text-lg font-bold text-on-tertiary">Tertiary</span>
+					<span class="text-sm text-on-tertiary">--tertiary</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Container Colors -->
+		<div class="mb-8">
+			<h2 class="mb-4 text-xl text-on-surface">Container Colors</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="flex flex-col items-center justify-center rounded-lg bg-primary-container p-6">
+					<span class="text-lg font-bold text-on-primary-container">Primary Container</span>
+					<span class="text-sm text-on-primary-container">--primary-container</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg bg-secondary-container p-6">
+					<span class="text-lg font-bold text-on-secondary-container">Secondary Container</span>
+					<span class="text-sm text-on-secondary-container">--secondary-container</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg bg-tertiary-container p-6">
+					<span class="text-lg font-bold text-on-tertiary-container">Tertiary Container</span>
+					<span class="text-sm text-on-tertiary-container">--tertiary-container</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Surface Colors -->
+		<div class="mb-8">
+			<h2 class="mb-4 text-xl text-on-surface">Surface Colors</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+				<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface p-6">
+					<span class="text-lg font-bold text-on-surface">Surface</span>
+					<span class="text-sm text-on-surface-variant">--surface</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface-container p-6">
+					<span class="text-lg font-bold text-on-surface">Surface Container</span>
+					<span class="text-sm text-on-surface-variant">--surface-container</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high p-6">
+					<span class="text-lg font-bold text-on-surface">Surface Container High</span>
+					<span class="text-sm text-on-surface-variant">--surface-container-high</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface-variant p-6">
+					<span class="text-lg font-bold text-on-surface-variant">Surface Variant</span>
+					<span class="text-sm text-on-surface-variant">--surface-variant</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Error Colors -->
+		<div class="mb-8">
+			<h2 class="mb-4 text-xl text-on-surface">Error Colors</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div class="flex flex-col items-center justify-center rounded-lg bg-error p-6">
+					<span class="text-lg font-bold text-on-error">Error</span>
+					<span class="text-sm text-on-error">--error</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg bg-error-container p-6">
+					<span class="text-lg font-bold text-on-error-container">Error Container</span>
+					<span class="text-sm text-on-error-container">--error-container</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Outline & Other -->
+		<div class="mb-8">
+			<h2 class="mb-4 text-xl text-on-surface">Outline & Other</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="flex flex-col items-center justify-center rounded-lg border-2 border-outline bg-surface p-6">
+					<span class="text-lg font-bold text-on-surface">Outline</span>
+					<span class="text-sm text-on-surface-variant">--outline</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg border-2 border-outline-variant bg-surface p-6">
+					<span class="text-lg font-bold text-on-surface">Outline Variant</span>
+					<span class="text-sm text-on-surface-variant">--outline-variant</span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-lg bg-inverse-surface p-6">
+					<span class="text-lg font-bold text-inverse-on-surface">Inverse Surface</span>
+					<span class="text-sm text-inverse-on-surface">--inverse-surface</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Palette Tones -->
+		<div class="mb-8">
+			<h2 class="mb-4 text-xl text-on-surface">Primary Palette Tones</h2>
+			<div class="grid grid-cols-4 gap-2 md:grid-cols-8">
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-40 p-2 text-white">
+					<span class="text-xs">40</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-50 p-2 text-white">
+					<span class="text-xs">50</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-60 p-2 text-white">
+					<span class="text-xs">60</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-70 p-2 text-white">
+					<span class="text-xs">70</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-80 p-2">
+					<span class="text-xs">80</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-90 p-2">
+					<span class="text-xs">90</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-95 p-2">
+					<span class="text-xs">95</span>
+				</div>
+				<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-99 p-2">
+					<span class="text-xs">99</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Component Examples -->
+		<div>
+			<h2 class="mb-4 text-xl text-on-surface">Component Examples</h2>
+			<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+				<!-- Buttons -->
+				<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+					<h3 class="mb-3 text-lg text-on-surface">Buttons</h3>
+					<div class="flex flex-wrap gap-2">
+						<button class="btn-default btn-primary">Default</button>
+						<button class="btn-outline btn-primary">Outline</button>
+						<button
+							class="btn-default btn-primary btn-disabled"
+							disabled
+						>
+							Disabled
+						</button>
+					</div>
+				</div>
+
+				<!-- Inputs -->
+				<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+					<h3 class="mb-3 text-lg text-on-surface">Inputs</h3>
+					<div class="flex flex-col gap-3">
+						<!-- Standard Inputs -->
+						<div>
+							<h4 class="text-md mb-2 text-on-surface-variant">Standard Inputs</h4>
+							<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+								<input
+									type="text"
+									placeholder="Default input with full borders"
+									class="input-default input-primary"
+								/>
+								<input
+									type="text"
+									placeholder="Outline input style variant"
+									class="input-outline input-primary"
+								/>
+							</div>
+						</div>
+
+						<!-- Input Colors -->
+						<div>
+							<h4 class="text-md mb-2 text-on-surface-variant">Input Colors</h4>
+							<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+								<input
+									type="text"
+									placeholder="Primary input focus"
+									class="input-default input-primary"
+									value="Primary text color"
+								/>
+								<input
+									type="text"
+									placeholder="Secondary input focus"
+									class="input-default input-secondary"
+									value="Secondary focus effect"
+								/>
+								<input
+									type="text"
+									placeholder="Tertiary input focus"
+									class="input-default input-tertiary"
+									value="Tertiary focus effect"
+								/>
+							</div>
+						</div>
+
+						<!-- Input Sizes -->
+						<div>
+							<h4 class="text-md mb-2 text-on-surface-variant">Input Sizes</h4>
+							<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+								<input
+									type="text"
+									placeholder="Small input size"
+									class="input-default input-primary input-sm"
+									value="Small input"
+								/>
+								<input
+									type="text"
+									placeholder="Default input size"
+									class="input-default input-primary"
+									value="Default input"
+								/>
+								<input
+									type="text"
+									placeholder="Large input size"
+									class="input-default input-primary input-lg"
+									value="Large input"
+								/>
+							</div>
+						</div>
+
+						<!-- Input States -->
+						<div>
+							<h4 class="text-md mb-2 text-on-surface-variant">Input States</h4>
+							<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+								<input
+									type="text"
+									placeholder="Disabled input state"
+									class="input-default input-primary"
+									value="Disabled input text"
+									disabled
+								/>
+								<input
+									type="text"
+									placeholder="Error input state"
+									class="input-default input-primary input-error"
+									value="Error input text"
+								/>
+							</div>
+						</div>
+
+						<!-- Input with Icons -->
+						<div>
+							<h4 class="text-md mb-2 text-on-surface-variant">Input with Icons</h4>
+							<div class="grid grid-cols-1 gap-3">
+								<div class="input-group">
+									<span class="input-icon input-icon-left">
+										<i class="fa-solid fa-search"></i>
+									</span>
+									<input
+										type="text"
+										placeholder="Search with left icon..."
+										class="input-default input-primary input-with-icon-left"
+									/>
+								</div>
+								<div class="input-group">
+									<input
+										type="text"
+										placeholder="Email with right icon..."
+										class="input-default input-primary input-with-icon-right"
+										value="example@email.com"
+									/>
+									<span class="input-icon input-icon-right">
+										<i class="fa-solid fa-envelope"></i>
+									</span>
+								</div>
+								<div class="input-group">
+									<span class="input-icon input-icon-left">
+										<i class="fa-solid fa-user"></i>
+									</span>
+									<input
+										type="text"
+										placeholder="Username with left icon..."
+										class="input-outline input-primary input-with-icon-left"
+										value="john.doe"
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+<!-- Clipboard Component Showcase -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h2 class="mb-4 text-xl text-on-surface">Clipboard Component Showcase</h2>
+
+	<!-- Standalone Clipboard Buttons -->
+	<div class="mb-8">
+		<h3 class="mb-4 text-lg text-on-surface">Standalone Clipboard Buttons</h3>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Primary (Text + Icon)</div>
+				<app-clipboard
+					[value]="'https://example.com/primary'"
+					[buttonLabel]="'Copy URL'"
+					[copiedLabel]="'URL Copied!'"
+					[customIconClass]="'text-primary'"
+					[customClass]="'clipboard-default clipboard-primary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Primary (Icon Only)</div>
+				<app-clipboard
+					[value]="'https://example.com/primary-icon'"
+					[buttonLabel]="'Copy'"
+					[copiedLabel]="'Copied!'"
+					[iconOnly]="true"
+					[customIconClass]="'text-primary'"
+					[customClass]="'clipboard-default clipboard-primary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Secondary</div>
+				<app-clipboard
+					[value]="'https://example.com/secondary'"
+					[buttonLabel]="'Copy Link'"
+					[copiedLabel]="'Link Copied!'"
+					[customIconClass]="'text-secondary'"
+					[customClass]="'clipboard-default clipboard-secondary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Tertiary (Icon Only)</div>
+				<app-clipboard
+					[value]="'https://example.com/tertiary'"
+					[buttonLabel]="'Copy'"
+					[copiedLabel]="'Copied!'"
+					[iconOnly]="true"
+					[customIconClass]="'text-tertiary'"
+					[customClass]="'clipboard-default clipboard-tertiary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Outline Primary</div>
+				<app-clipboard
+					[value]="'https://example.com/outline'"
+					[buttonLabel]="'Copy'"
+					[copiedLabel]="'Copied!'"
+					[customIconClass]="'text-primary'"
+					[customClass]="'clipboard-outline clipboard-primary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Outline Secondary (Icon Only)</div>
+				<app-clipboard
+					[value]="'https://example.com/outline-secondary'"
+					[buttonLabel]="'Copy'"
+					[copiedLabel]="'Copied!'"
+					[iconOnly]="true"
+					[customIconClass]="'text-secondary'"
+					[customClass]="'clipboard-outline clipboard-secondary'"
+				>
+				</app-clipboard>
+			</div>
+		</div>
+	</div>
+
+	<!-- Clipboard with Input Connection -->
+	<div class="mb-8">
+		<h3 class="mb-4 text-lg text-on-surface">Clipboard Connected to Inputs</h3>
+		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+			<div>
+				<label
+					for="connected-primary-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Primary Input + Clipboard (Text)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-primary-input"
+						type="text"
+						value="https://example.com/connected-primary"
+						readonly
+						class="input-default input-primary input-with-clipboard w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-primary'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[customClass]="'cb-with-input clipboard-default clipboard-primary'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+			<div>
+				<label
+					for="connected-primary-icon-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Primary Input + Clipboard (Icon Only)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-primary-icon-input"
+						type="text"
+						value="https://example.com/connected-primary-icon"
+						readonly
+						class="input-default input-primary input-with-clipboard w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-primary-icon'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[iconOnly]="true"
+						[customClass]="'cb-with-input clipboard-default clipboard-primary'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+			<div>
+				<label
+					for="connected-secondary-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Secondary Input + Clipboard (Icon Only)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-secondary-input"
+						type="text"
+						value="https://example.com/connected-secondary"
+						readonly
+						class="input-default input-secondary input-with-clipboard w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-secondary'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[iconOnly]="true"
+						[customIconClass]="'text-secondary'"
+						[customClass]="'cb-with-input clipboard-default clipboard-secondary'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+			<div>
+				<label
+					for="connected-outline-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Outline Input + Clipboard (Text)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-outline-input"
+						type="text"
+						value="https://example.com/connected-outline"
+						readonly
+						class="input-outline input-primary input-with-clipboard w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-outline'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[customIconClass]="'text-primary'"
+						[customClass]="'cb-with-input clipboard-outline clipboard-primary'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+			<div>
+				<label
+					for="connected-tertiary-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Tertiary Input + Clipboard (Icon Only)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-tertiary-input"
+						type="text"
+						value="https://example.com/connected-tertiary"
+						readonly
+						class="input-default input-tertiary input-with-clipboard w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-tertiary'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[iconOnly]="true"
+						[customIconClass]="'text-tertiary'"
+						[customClass]="'cb-with-input clipboard-default clipboard-tertiary'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+			<div>
+				<label
+					for="connected-small-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Small Input + Clipboard (Icon Only)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-small-input"
+						type="text"
+						value="https://example.com/connected-small"
+						readonly
+						class="input-default input-primary input-with-clipboard input-sm w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-small'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[iconOnly]="true"
+						[customIconClass]="'text-primary'"
+						[customClass]="'cb-with-input clipboard-default clipboard-primary clipboard-sm'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+			<div>
+				<label
+					for="connected-large-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Large Input + Clipboard (Text)</label
+				>
+				<div class="flex">
+					<input
+						id="connected-large-input"
+						type="text"
+						value="https://example.com/connected-large"
+						readonly
+						class="input-default input-primary input-with-clipboard input-lg w-full"
+					/>
+					<app-clipboard
+						[value]="'https://example.com/connected-large'"
+						[buttonLabel]="'Copy'"
+						[copiedLabel]="'Copied!'"
+						[customIconClass]="'text-primary'"
+						[customClass]="'cb-with-input clipboard-default clipboard-primary clipboard-lg'"
+					>
+					</app-clipboard>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Custom Content Examples -->
+	<div class="mb-8">
+		<h3 class="mb-4 text-lg text-on-surface">Custom Button Examples</h3>
+		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Custom Button via [button]</div>
+				<app-clipboard [value]="'https://example.com/button'">
+					<button
+						button
+						class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors duration-200 hover:bg-blue-700"
+					>
+						<i class="fa-solid fa-copy mr-2"></i>
+						Custom Copy Button
+					</button>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Custom Icons with Parameters</div>
+				<app-clipboard
+					[value]="'https://example.com/custom-icons'"
+					[customIcon]="'fa-solid fa-clipboard'"
+					[customCopiedIcon]="'fa-solid fa-check-circle'"
+					[customIconClass]="'text-green-500'"
+					[iconOnly]="true"
+					[customClass]="'clipboard-default clipboard-primary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<div class="mb-1 block text-sm font-medium text-on-surface">Custom Icon Colors</div>
+				<app-clipboard
+					[value]="'https://example.com/custom-colors'"
+					[customIconClass]="'text-purple-500'"
+					[iconOnly]="true"
+					[customClass]="'clipboard-outline clipboard-primary'"
+				>
+				</app-clipboard>
+			</div>
+			<div>
+				<label
+					for="custom-connected-input"
+					class="mb-1 block text-sm font-medium text-on-surface"
+					>Custom Connected Button</label
+				>
+				<div class="flex">
+					<input
+						id="custom-connected-input"
+						type="text"
+						value="https://example.com/custom-connected"
+						readonly
+						class="input-default input-primary input-with-clipboard w-full"
+					/>
+					<app-clipboard [value]="'https://example.com/custom-connected'">
+						<button
+							button
+							class="rounded-r-lg bg-primary px-3 py-2 text-on-primary transition-colors duration-200 hover:bg-primary-70"
+						>
+							<i class="fa-solid fa-copy"></i>
+						</button>
+					</app-clipboard>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Usage Examples -->
+	<div>
+		<h3 class="mb-4 text-lg text-on-surface">Usage Examples</h3>
+		<div class="rounded-lg bg-surface-container p-4">
+			<h4 class="text-md mb-2 text-on-surface">Default Styling:</h4>
+			<pre class="text-sm text-on-surface-variant"><code>&lt;app-clipboard 
+  [value]="'text to copy'"
+  buttonLabel="Copy"
+  copiedLabel="Copied!"
+  customClass="clipboard-default clipboard-primary"&gt;
+&lt;/app-clipboard&gt;</code></pre>
+
+			<h4 class="text-md mb-2 mt-4 text-on-surface">Connected to Input:</h4>
+			<pre class="text-sm text-on-surface-variant"><code>&lt;div class="flex"&gt;
+  &lt;input 
+    type="text" 
+    value="text to copy" 
+    readonly
+    class="input-default input-primary input-with-clipboard w-full" 
+  /&gt;
+  &lt;app-clipboard 
+    [value]="'text to copy'"
+    buttonLabel="Copy"
+    copiedLabel="Copied!"
+    customClass="cb-with-input clipboard-default clipboard-primary"&gt;
+  &lt;/app-clipboard&gt;
+&lt;/div&gt;</code></pre>
+
+			<h4 class="text-md mb-2 mt-4 text-on-surface">Custom Button via [button]:</h4>
+			<pre class="text-sm text-on-surface-variant"><code>&lt;app-clipboard [value]="'text to copy'"&gt;
+  &lt;button button class="my-custom-button"&gt;
+    &lt;i class="fa-solid fa-copy"&gt;&lt;/i&gt;
+    Custom Copy Button
+  &lt;/button&gt;
+&lt;/app-clipboard&gt;</code></pre>
+
+			<h4 class="text-md mb-2 mt-4 text-on-surface">Custom Icons with Parameters:</h4>
+			<pre class="text-sm text-on-surface-variant"><code>&lt;app-clipboard 
+  [value]="'text to copy'"
+  customIcon="fa-solid fa-clipboard"
+  customCopiedIcon="fa-solid fa-check-circle"
+  customIconClass="text-green-500"
+  [iconOnly]="true"&gt;
+&lt;/app-clipboard&gt;</code></pre>
+		</div>
+	</div>
+</section>
+
+	<!-- Node Editor Section - Temporarily disabled for SSR compatibility -->
+	<section class="my-10 rounded-lg bg-surface p-6">
+		<h1 class="mb-6 text-2xl text-on-surface">Node-Based Editor</h1>
+		<p class="mb-6 text-on-surface-variant">Visual node-based editor built with Angular and PixiJS</p>
+		<div class="h-screen">
+			<app-node-editor></app-node-editor>
+		</div>
+	</section>
+
+	<!-- Material Theme Converter Section -->
+	<section class="my-10 rounded-lg bg-surface p-6">
+		<h1 class="mb-6 text-2xl text-on-surface">Material Theme Converter</h1>
+		<p class="mb-6 text-on-surface-variant">Convert Material Theme JSON files to SCSS variables</p>
+
+		<app-theme-converter></app-theme-converter>
+	</section>
+
+	<!-- Reverb Testing Section -->
+	<section class="mt-8 rounded-lg bg-gray-800 p-6">
+		<h2 class="mb-4 text-2xl font-bold text-white">🎵 Rust WASM Reverb Testing</h2>
+
+		<!-- WASM Status -->
+		<div class="mb-4">
+			<p class="text-gray-300">
+				WASM Status:
+				<span
+					id="wasm-status"
+					class="font-semibold text-yellow-400"
+					>Loading...</span
+				>
+			</p>
+			<p class="text-gray-300">
+				Reverb Status: <span class="font-semibold text-blue-400">{{ reverbTesting.testStatus }}</span>
+			</p>
+		</div>
+
+		<!-- Progress Bar -->
+		@if (reverbTesting.isProcessing) {
+			<div class="mb-6 rounded-md bg-gray-700 p-4">
+				<div class="mb-2 flex justify-between text-sm">
+					<span class="text-gray-300">{{ reverbTesting.processingStep }}</span>
+					<span class="text-blue-400">{{ reverbTesting.processingProgress }}%</span>
+				</div>
+				<app-progressbar
+					[progress]="reverbTesting.processingProgress / 100"
+					[type]="'linear-determinate'"
+				></app-progressbar>
+			</div>
+		}
+
+		<!-- Audio File Selection -->
+		<div class="mb-4 rounded-md bg-gray-700 p-4">
+			<div class="mb-3 flex items-center justify-between">
+				<div class="flex flex-col">
+					<span class="text-sm text-gray-400">Current Test Audio:</span>
+					<span class="text-lg font-semibold text-white">{{ reverbTesting.currentAudioName }}</span>
+				</div>
+				<button
+					class="btn-default btn-accent btn-sm"
+					(click)="switchTestAudio()"
+					[disabled]="reverbTesting.testStatus.includes('Loading') || reverbTesting.isProcessing"
+				>
+					🔄 Next Audio
+				</button>
+			</div>
+
+			<!-- Audio Selection Buttons -->
+			<div class="flex flex-wrap gap-2">
+				@for (audioFile of reverbTesting.availableAudioFiles; track audioFile.name; let i = $index) {
+					<button
+						class="btn-outline btn-sm transition-colors"
+						[class.btn-primary]="i === reverbTesting.currentAudioIndex"
+						[class.btn-secondary]="i !== reverbTesting.currentAudioIndex"
+						(click)="selectSpecificAudio(i)"
+						[disabled]="reverbTesting.isProcessing"
+						[title]="audioFile.name"
+					>
+						{{ audioFile.name }}
+					</button>
+				}
+			</div>
+		</div>
+
+		<!-- Professional Reverb Controls -->
+		<div class="mb-6">
+			<h3 class="mb-3 text-lg font-semibold text-white">Professional Reverb Controls</h3>
+
+			<!-- Row 1: Room Size, Pre-delay, Reverberation -->
+			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="flex flex-col">
+					<label
+						for="roomSize"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Room Size (%)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.roomSize"
+						class="accent-blue-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.roomSize }}%</span>
+				</div>
+
+				<div class="flex flex-col">
+					<label
+						for="preDelay"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Pre-delay (ms)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.preDelay"
+						class="accent-blue-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.preDelay }}ms</span>
+				</div>
+
+				<div class="flex flex-col">
+					<label
+						for="reverberation"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Reverberation (%)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.reverberation"
+						class="accent-blue-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.reverberation }}%</span>
+				</div>
+			</div>
+
+			<!-- Row 2: Damping, Tone Low, Tone High -->
+			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="flex flex-col">
+					<label
+						for="damping"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Damping (%)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.damping"
+						class="accent-yellow-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.damping }}%</span>
+				</div>
+
+				<div class="flex flex-col">
+					<label
+						for="toneLow"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Tone Low (%)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.toneLow"
+						class="accent-green-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.toneLow }}%</span>
+				</div>
+
+				<div class="flex flex-col">
+					<label
+						for="toneHigh"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Tone High (%)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.toneHigh"
+						class="accent-green-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.toneHigh }}%</span>
+				</div>
+			</div>
+
+			<!-- Row 3: Wet Gain, Dry Gain, Stereo Width -->
+			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="flex flex-col">
+					<label
+						for="wetGain"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Wet Gain (dB)</label
+					>
+					<input
+						type="range"
+						min="-60"
+						max="12"
+						step="1"
+						[(ngModel)]="this.reverbTesting.wetGain"
+						class="accent-purple-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.wetGain }}dB</span>
+				</div>
+
+				<div class="flex flex-col">
+					<label
+						for="dryGain"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Dry Gain (dB)</label
+					>
+					<input
+						type="range"
+						min="-60"
+						max="12"
+						step="1"
+						[(ngModel)]="this.reverbTesting.dryGain"
+						class="accent-purple-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.dryGain }}dB</span>
+				</div>
+
+				<div class="flex flex-col">
+					<label
+						for="stereoWidth"
+						class="mb-2 text-sm font-medium text-gray-300"
+						>Stereo Width (%)</label
+					>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="5"
+						[(ngModel)]="this.reverbTesting.stereoWidth"
+						class="accent-indigo-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="mt-1 text-xs text-gray-400">{{ this.reverbTesting.stereoWidth }}%</span>
+				</div>
+			</div>
+
+			<!-- Wet Only Toggle -->
+			<div class="mb-4 flex items-center gap-3">
+				<label
+					for="wetOnly"
+					class="flex cursor-pointer items-center"
+				>
+					<input
+						type="checkbox"
+						[(ngModel)]="this.reverbTesting.wetOnly"
+						class="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+						[disabled]="this.reverbTesting.isProcessing"
+					/>
+					<span class="text-sm font-medium text-gray-300">Wet Only</span>
+				</label>
+				<span class="text-xs text-gray-400">(Output only reverbed signal, no dry)</span>
+			</div>
+		</div>
+
+		<!-- Reverb Presets -->
+		<div class="mb-4 rounded-md bg-gray-700 p-4">
+			<h4 class="mb-2 text-sm font-semibold text-white">Quick Presets:</h4>
+			<div class="flex flex-wrap gap-2">
+				<button
+					class="btn-outline btn-accent btn-xs"
+					(click)="this.applyPreset('room')"
+					[disabled]="reverbTesting.isProcessing"
+				>
+					Small Room
+				</button>
+				<button
+					class="btn-outline btn-accent btn-xs"
+					(click)="this.applyPreset('hall')"
+					[disabled]="reverbTesting.isProcessing"
+				>
+					Concert Hall
+				</button>
+				<button
+					class="btn-outline btn-accent btn-xs"
+					(click)="this.applyPreset('cathedral')"
+					[disabled]="reverbTesting.isProcessing"
+				>
+					Cathedral
+				</button>
+				<button
+					class="btn-outline btn-accent btn-xs"
+					(click)="this.applyPreset('plate')"
+					[disabled]="reverbTesting.isProcessing"
+				>
+					Plate Reverb
+				</button>
+				<button
+					class="btn-outline btn-accent btn-xs"
+					(click)="this.applyPreset('spring')"
+					[disabled]="reverbTesting.isProcessing"
+				>
+					Spring Reverb
+				</button>
+			</div>
+		</div>
+
+		<!-- Control Buttons -->
+		<div class="mb-4 flex flex-wrap gap-3">
+			<button
+				class="btn-default btn-primary"
+				(click)="testReverb()"
+				[disabled]="!reverbTesting.originalAudio || reverbTesting.isProcessing"
+			>
+				🎛️ Apply Reverb (30s)
+			</button>
+
+			<button
+				class="btn-default btn-accent"
+				(click)="testReverbFullAudio()"
+				[disabled]="!reverbTesting.originalAudio || reverbTesting.isProcessing"
+				title="Process entire audio file (may take longer)"
+			>
+				🎛️ Apply Reverb (Full)
+			</button>
+
+			<button
+				class="btn-default btn-secondary"
+				(click)="playOriginalAudio()"
+				[disabled]="!reverbTesting.originalAudio || reverbTesting.testAudioPlaying || reverbTesting.isProcessing"
+			>
+				▶️ Play Original
+			</button>
+
+			<button
+				class="btn-default btn-tertiary"
+				(click)="playReverbedAudio()"
+				[disabled]="!reverbTesting.reverbedAudioElement || reverbTesting.testAudioPlaying || reverbTesting.isProcessing"
+			>
+				▶️ Play Reverbed
+			</button>
+
+			<button
+				class="btn-outline btn-quaternary"
+				(click)="stopAudio()"
+				[disabled]="!reverbTesting.testAudioPlaying"
+			>
+				⏹️ Stop
+			</button>
+
+			<button
+				class="btn-default btn-quinary"
+				(click)="downloadReverbedAudio()"
+				[disabled]="!reverbTesting.reverbedBlobUrl || reverbTesting.isProcessing"
+				title="Download the reverbed audio as WAV file"
+			>
+				💾 Download
+			</button>
+
+			<button
+				class="btn-outline btn-secondary btn-sm"
+				(click)="resetReverbSettings()"
+				[disabled]="reverbTesting.isProcessing"
+			>
+				🔄 Reset
+			</button>
+		</div>
+
+		<!-- Current Status -->
+		<div class="mb-4 flex items-center gap-2 text-sm">
+			@if (reverbTesting.currentlyPlaying === 'original') {
+				<span class="rounded bg-blue-600 px-2 py-1 text-white">🎵 Playing Original</span>
+			}
+			@if (reverbTesting.currentlyPlaying === 'reverbed') {
+				<span class="rounded bg-green-600 px-2 py-1 text-white">🎵 Playing Reverbed</span>
+			}
+			@if (reverbTesting.testAudioPlaying && !reverbTesting.currentlyPlaying) {
+				<span class="rounded bg-yellow-600 px-2 py-1 text-white">🎵 Audio Playing</span>
+			}
+			@if (reverbTesting.isProcessing) {
+				<span class="rounded bg-purple-600 px-2 py-1 text-white">⚙️ Processing</span>
+			}
+		</div>
+
+		<!-- Info -->
+		<div class="rounded-md bg-gray-700 p-4">
+			<h3 class="mb-2 font-semibold text-white">Professional Reverb Features:</h3>
+			<div class="grid gap-3 md:grid-cols-2">
+				<ul class="space-y-1 text-sm text-gray-300">
+					<li>• <strong>Room Size</strong> - Virtual space dimensions (0-100%)</li>
+					<li>• <strong>Pre-delay</strong> - Early reflection delay (0-100ms)</li>
+					<li>• <strong>Reverberation</strong> - Wet signal amount (0-100%)</li>
+					<li>• <strong>Damping</strong> - High frequency absorption (0-100%)</li>
+					<li>• <strong>Tone Controls</strong> - Low/High frequency shaping (0-100%)</li>
+				</ul>
+				<ul class="space-y-1 text-sm text-gray-300">
+					<li>• <strong>Wet/Dry Gain</strong> - Precise level control in dB (-60 to +12)</li>
+					<li>• <strong>Stereo Width</strong> - Spatial enhancement (0-100%)</li>
+					<li>• <strong>Wet Only</strong> - Output only reverbed signal</li>
+					<li>• <strong>Quick Presets</strong> - Professional reverb types</li>
+					<li>• <strong>Multiple Audio Files</strong> - Test with different sources</li>
+				</ul>
+			</div>
+			<div class="mt-3 text-xs text-gray-400">
+				<p><strong>Audio Files:</strong> Do I Wanna Know, Caliente, Sub Pielea Mea, MIMIMI</p>
+				<p><strong>Processing:</strong> FFT-based convolution with overlap-add for efficiency</p>
+				<p><strong>Quality:</strong> 44.1kHz sampling with professional-grade algorithms</p>
+			</div>
+		</div>
+	</section>
+
+	<!-- Pitch Shifting Testing Section -->
+	<section class="mt-8 rounded-lg bg-gray-800 p-6">
+		<h2 class="mb-4 text-2xl font-bold text-white">🎼 Pitch Shifting Testing</h2>
+
+		<!-- WASM Status -->
+		<div class="mb-4 rounded-md bg-gray-700 p-3">
+			<span
+				id="wasm-status"
+				class="text-white"
+				>⏳ Loading WASM...</span
+			>
+		</div>
+
+		<!-- Audio File Selection -->
+		<div class="mb-6 grid gap-4 md:grid-cols-2">
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-2 font-semibold text-white">Audio File</h3>
+				<div class="mb-3">
+					<span class="text-white">{{ pitchTesting.currentAudioName }}</span>
+					<button
+						class="btn-default btn-primary ml-2"
+						(click)="switchPitchTestAudio()"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Switch Audio
+					</button>
+				</div>
+				<div class="text-sm text-gray-300">
+					Status:
+					<span
+						[ngClass]="{
+							'text-green-400': pitchTesting.testStatus.includes('✅'),
+							'text-red-400': pitchTesting.testStatus.includes('❌'),
+							'text-yellow-400': pitchTesting.testStatus.includes('⏳')
+						}"
+						>{{ pitchTesting.testStatus }}</span
+					>
+				</div>
+			</div>
+
+			<!-- Progress Display -->
+			<div
+				class="rounded-md bg-gray-700 p-4"
+				*ngIf="pitchTesting.isProcessing"
+			>
+				<h3 class="mb-2 font-semibold text-white">Processing Progress</h3>
+				<div class="mb-2">
+					<div class="w-full rounded bg-gray-600">
+						<div
+							class="rounded bg-blue-500 p-1 text-center text-xs text-white transition-all duration-300"
+							[style.width.%]="pitchTesting.processingProgress"
+						>
+							{{ pitchTesting.processingProgress }}%
+						</div>
+					</div>
+				</div>
+				<div class="text-sm text-gray-300">{{ pitchTesting.processingStep }}</div>
+			</div>
+		</div>
+
+		<!-- Pitch Shift Controls -->
+		<div class="mb-6 grid gap-4 lg:grid-cols-3">
+			<!-- Pitch Controls -->
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-3 font-semibold text-white">Pitch Control</h3>
+
+				<div class="mb-4">
+					<label
+						for="pitchShift"
+						class="mb-2 block text-sm font-medium text-white"
+						>Pitch Shift (semitones): {{ pitchTesting.pitchShift }}</label
+					>
+					<input
+						type="range"
+						class="w-full"
+						min="-24"
+						max="24"
+						step="1"
+						[(ngModel)]="pitchTesting.pitchShift"
+						[disabled]="pitchTesting.isProcessing"
+					/>
+					<div class="mt-1 flex justify-between text-xs text-gray-400">
+						<span>-24 (2 oct down)</span>
+						<span>0 (original)</span>
+						<span>+24 (2 oct up)</span>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<label
+						for="quality"
+						class="mb-2 block text-sm font-medium text-white"
+						>Quality</label
+					>
+					<select
+						class="w-full rounded bg-gray-600 p-2 text-white"
+						[(ngModel)]="pitchTesting.quality"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						<option value="fast">Fast (512 window)</option>
+						<option value="balanced">Balanced (1024 window)</option>
+						<option value="high">High Quality (auto window)</option>
+					</select>
+				</div>
+
+				<div class="mb-4">
+					<label
+						for="processFullAudio"
+						class="flex items-center text-sm text-white"
+					>
+						<input
+							type="checkbox"
+							class="mr-2"
+							[(ngModel)]="pitchTesting.processFullAudio"
+							[disabled]="pitchTesting.isProcessing"
+						/>
+						Process Full Audio (may be slow)
+					</label>
+				</div>
+			</div>
+
+			<!-- Quick Presets -->
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-3 font-semibold text-white">Quick Presets</h3>
+				<div class="grid grid-cols-2 gap-2">
+					<button
+						class="btn-default btn-secondary"
+						(click)="applyPitchPreset('octave-up')"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Octave Up
+					</button>
+					<button
+						class="btn-default btn-secondary"
+						(click)="applyPitchPreset('octave-down')"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Octave Down
+					</button>
+					<button
+						class="btn-default btn-secondary"
+						(click)="applyPitchPreset('fifth-up')"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Fifth Up
+					</button>
+					<button
+						class="btn-default btn-secondary"
+						(click)="applyPitchPreset('fifth-down')"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Fifth Down
+					</button>
+					<button
+						class="btn-default btn-accent"
+						(click)="applyPitchPreset('shimmer')"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Shimmer
+					</button>
+					<button
+						class="btn-default btn-tertiary"
+						(click)="applyPitchPreset('deep-bass')"
+						[disabled]="pitchTesting.isProcessing"
+					>
+						Deep Bass
+					</button>
+				</div>
+				<button
+					class="btn-outline btn-secondary mt-2 w-full"
+					(click)="resetPitchSettings()"
+					[disabled]="pitchTesting.isProcessing"
+				>
+					Reset to Default
+				</button>
+			</div>
+
+			<!-- Playback Controls -->
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-3 font-semibold text-white">Playback & Export</h3>
+
+				<div class="mb-4 grid grid-cols-2 gap-2">
+					<button
+						class="btn-default"
+						[ngClass]="pitchTesting.currentlyPlaying === 'original' ? 'btn-accent' : 'btn-quaternary'"
+						(click)="playOriginalPitchAudio()"
+						[disabled]="pitchTesting.isProcessing || !pitchTesting.originalAudioElement"
+					>
+						🎵 Original
+					</button>
+					<button
+						class="btn-default"
+						[ngClass]="pitchTesting.currentlyPlaying === 'pitch-shifted' ? 'btn-accent' : 'btn-secondary'"
+						(click)="playPitchShiftedAudio()"
+						[disabled]="pitchTesting.isProcessing || !pitchTesting.pitchShiftedAudioElement"
+					>
+						🎼 Pitched
+					</button>
+				</div>
+
+				<button
+					class="btn-default btn-tertiary mb-2 w-full"
+					(click)="stopPitchAudio()"
+					[disabled]="pitchTesting.isProcessing"
+				>
+					⏹️ Stop Audio
+				</button>
+
+				<button
+					class="btn-default btn-primary mb-2 w-full"
+					(click)="testPitchShift()"
+					[disabled]="pitchTesting.isProcessing || !pitchTesting.originalAudio"
+				>
+					🎛️ Apply Pitch Shift
+				</button>
+
+				<button
+					class="btn-default btn-accent mb-2 w-full"
+					(click)="testPitchShiftFullAudio()"
+					[disabled]="pitchTesting.isProcessing || !pitchTesting.originalAudio"
+				>
+					🎛️ Process Full Audio
+				</button>
+
+				<button
+					class="btn-outline btn-primary w-full"
+					(click)="downloadPitchShiftedAudio()"
+					[disabled]="!pitchTesting.pitchShiftedBlobUrl"
+				>
+					💾 Download Result
+				</button>
+			</div>
+		</div>
+
+		<!-- Current Status & Info -->
+		<div class="mb-4 flex flex-wrap gap-2">
+			@if (pitchTesting.currentlyPlaying === 'original') {
+				<span class="rounded bg-blue-600 px-2 py-1 text-white">🎵 Original Playing</span>
+			}
+			@if (pitchTesting.currentlyPlaying === 'pitch-shifted') {
+				<span class="rounded bg-green-600 px-2 py-1 text-white">🎼 Pitch-Shifted Playing</span>
+			}
+			@if (pitchTesting.testAudioPlaying && !pitchTesting.currentlyPlaying) {
+				<span class="rounded bg-yellow-600 px-2 py-1 text-white">🎵 Audio Playing</span>
+			}
+			@if (pitchTesting.isProcessing) {
+				<span class="rounded bg-purple-600 px-2 py-1 text-white">⚙️ Processing</span>
+			}
+			@if (pitchTesting.pitchShift !== 0) {
+				<span class="rounded bg-indigo-600 px-2 py-1 text-white"> 🎼 {{ pitchTesting.pitchShift > 0 ? '+' : '' }}{{ pitchTesting.pitchShift }} semitones </span>
+			}
+		</div>
+
+		<!-- Info -->
+		<div class="rounded-md bg-gray-700 p-4">
+			<h3 class="mb-2 font-semibold text-white">Professional Pitch Shifting Features:</h3>
+			<div class="grid gap-3 md:grid-cols-2">
+				<ul class="space-y-1 text-sm text-gray-300">
+					<li>• <strong>Phase Vocoder</strong> - Advanced FFT-based algorithm</li>
+					<li>• <strong>SBSMS</strong> - Sinusoidal Block-based Multi-rate Signal Processing</li>
+					<li>• <strong>Length Preservation</strong> - Duration stays the same</li>
+					<li>• <strong>Wide Range</strong> - ±24 semitones (4 octaves total)</li>
+					<li>• <strong>Quality Control</strong> - Fast/Balanced/High quality modes</li>
+					<li>• <strong>Real-time Preview</strong> - Instant audio playback</li>
+				</ul>
+				<ul class="space-y-1 text-sm text-gray-300">
+					<li>• <strong>Musical Presets</strong> - Octave, fifth, shimmer effects</li>
+					<li>• <strong>Professional Export</strong> - High-quality WAV output</li>
+					<li>• <strong>Multiple Audio Files</strong> - Test with different sources</li>
+					<li>• <strong>WASM Performance</strong> - Rust-powered processing</li>
+					<li>• <strong>Progress Tracking</strong> - Visual processing feedback</li>
+				</ul>
+			</div>
+			<div class="mt-3 text-xs text-gray-400">
+				<p><strong>Algorithm:</strong> Phase vocoder with overlap-add synthesis</p>
+				<p><strong>Quality:</strong> Optimized for musical content with minimal artifacts</p>
+				<p><strong>Use Cases:</strong> Octave doubling, bassline thickening, shimmer effects</p>
+			</div>
+		</div>
+		<button
+			class="btn-default btn-primary mt-4"
+			(click)="this.runAnalysisPass()"
+		>
+			Run Analysis Pass
+		</button>
+	</section>
+
+	<!-- Flanger Testing Section -->
+	<section class="mt-8 rounded-lg bg-gray-800 p-6">
+		<h2 class="mb-4 text-2xl font-bold text-white">🌊 Flanger Effect Testing</h2>
+
+		<!-- WASM Status -->
+		<div class="mb-4 rounded-md bg-gray-700 p-3">
+			<span
+				id="wasm-status"
+				class="text-white"
+				>⏳ Loading WASM...</span
+			>
+		</div>
+
+		<!-- Audio File Selection -->
+		<div class="mb-6 grid gap-4 md:grid-cols-2">
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-2 font-semibold text-white">Audio File</h3>
+				<div class="mb-3">
+					<span class="text-white">{{ flangerTesting.currentAudioName }}</span>
+					<button
+						class="btn-default btn-primary ml-2"
+						(click)="switchFlangerTestAudio()"
+						[disabled]="flangerTesting.isProcessing"
+					>
+						Switch Audio
+					</button>
+				</div>
+				<div class="text-sm text-gray-300">
+					Status:
+					<span
+						[ngClass]="{
+							'text-green-400': flangerTesting.testStatus.includes('✅'),
+							'text-red-400': flangerTesting.testStatus.includes('❌'),
+							'text-yellow-400': flangerTesting.testStatus.includes('⏳')
+						}"
+						>{{ flangerTesting.testStatus }}</span
+					>
+				</div>
+			</div>
+
+			<!-- Progress Display -->
+			<div
+				class="rounded-md bg-gray-700 p-4"
+				*ngIf="flangerTesting.isProcessing"
+			>
+				<h3 class="mb-2 font-semibold text-white">Processing Progress</h3>
+				<div class="mb-2">
+					<div class="w-full rounded bg-gray-600">
+						<div
+							class="rounded bg-blue-500 p-1 text-center text-xs text-white transition-all duration-300"
+							[style.width.%]="flangerTesting.processingProgress"
+						>
+							{{ flangerTesting.processingProgress }}%
+						</div>
+					</div>
+				</div>
+				<div class="text-sm text-gray-300">{{ flangerTesting.processingStep }}</div>
+			</div>
+		</div>
+
+		<!-- Flanger Controls -->
+		<div class="mb-6 grid gap-4 lg:grid-cols-3">
+			<!-- Flanger Parameters -->
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-3 font-semibold text-white">Flanger Parameters</h3>
+
+				<div class="mb-4">
+					<label
+						for="rateHz"
+						class="mb-2 block text-sm font-medium text-white"
+						>LFO Rate (Hz): {{ flangerTesting.rateHz }}</label
+					>
+					<input
+						type="range"
+						class="w-full"
+						min="0.1"
+						max="5.0"
+						step="0.1"
+						[(ngModel)]="flangerTesting.rateHz"
+						[disabled]="flangerTesting.isProcessing"
+					/>
+					<div class="mt-1 flex justify-between text-xs text-gray-400">
+						<span>0.1 Hz</span>
+						<span>5.0 Hz</span>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<label
+						for="depth"
+						class="mb-2 block text-sm font-medium text-white"
+						>Depth: {{ (flangerTesting.depth * 100).toFixed(0) }}%</label
+					>
+					<input
+						type="range"
+						class="w-full"
+						min="0"
+						max="1"
+						step="0.05"
+						[(ngModel)]="flangerTesting.depth"
+						[disabled]="flangerTesting.isProcessing"
+					/>
+					<div class="mt-1 flex justify-between text-xs text-gray-400">
+						<span>0% (no effect)</span>
+						<span>100% (full depth)</span>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<label
+						for="feedback"
+						class="mb-2 block text-sm font-medium text-white"
+						>Feedback: {{ (flangerTesting.feedback * 100).toFixed(0) }}%</label
+					>
+					<input
+						type="range"
+						class="w-full"
+						min="0"
+						max="0.95"
+						step="0.05"
+						[(ngModel)]="flangerTesting.feedback"
+						[disabled]="flangerTesting.isProcessing"
+					/>
+					<div class="mt-1 flex justify-between text-xs text-gray-400">
+						<span>0% (no feedback)</span>
+						<span>95% (max feedback)</span>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<label
+						for="mix"
+						class="mb-2 block text-sm font-medium text-white"
+						>Mix: {{ (flangerTesting.mix * 100).toFixed(0) }}%</label
+					>
+					<input
+						type="range"
+						class="w-full"
+						min="0"
+						max="1"
+						step="0.05"
+						[(ngModel)]="flangerTesting.mix"
+						[disabled]="flangerTesting.isProcessing"
+					/>
+					<div class="mt-1 flex justify-between text-xs text-gray-400">
+						<span>0% (dry only)</span>
+						<span>100% (wet only)</span>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<label
+						for="processFullAudio"
+						class="flex items-center text-sm text-white"
+					>
+						<input
+							type="checkbox"
+							class="mr-2"
+							[(ngModel)]="flangerTesting.processFullAudio"
+							[disabled]="flangerTesting.isProcessing"
+						/>
+						Process Full Audio (may be slow)
+					</label>
+				</div>
+			</div>
+
+			<!-- Quick Presets -->
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-3 font-semibold text-white">Quick Presets</h3>
+				<div class="grid grid-cols-1 gap-2">
+					<button
+						class="btn-default btn-secondary"
+						(click)="applyFlangerPreset('subtle')"
+						[disabled]="flangerTesting.isProcessing"
+					>
+						Subtle Flange
+					</button>
+					<button
+						class="btn-default btn-primary"
+						(click)="applyFlangerPreset('classic')"
+						[disabled]="flangerTesting.isProcessing"
+					>
+						Classic Flange
+					</button>
+					<button
+						class="btn-default btn-accent"
+						(click)="applyFlangerPreset('intense')"
+						[disabled]="flangerTesting.isProcessing"
+					>
+						Intense Flange
+					</button>
+					<button
+						class="btn-default btn-tertiary"
+						(click)="applyFlangerPreset('jet-plane')"
+						[disabled]="flangerTesting.isProcessing"
+					>
+						Jet Plane
+					</button>
+					<button
+						class="btn-default btn-quaternary"
+						(click)="applyFlangerPreset('underwater')"
+						[disabled]="flangerTesting.isProcessing"
+					>
+						Underwater
+					</button>
+				</div>
+				<button
+					class="btn-outline btn-secondary mt-2 w-full"
+					(click)="resetFlangerSettings()"
+					[disabled]="flangerTesting.isProcessing"
+				>
+					Reset to Default
+				</button>
+			</div>
+
+			<!-- Playback Controls -->
+			<div class="rounded-md bg-gray-700 p-4">
+				<h3 class="mb-3 font-semibold text-white">Playback & Export</h3>
+
+				<div class="mb-4 grid grid-cols-2 gap-2">
+					<button
+						class="btn-default"
+						[ngClass]="flangerTesting.currentlyPlaying === 'original' ? 'btn-accent' : 'btn-quaternary'"
+						(click)="playOriginalFlangerAudio()"
+						[disabled]="flangerTesting.isProcessing || !flangerTesting.originalAudioElement"
+					>
+						🎵 Original
+					</button>
+					<button
+						class="btn-default"
+						[ngClass]="flangerTesting.currentlyPlaying === 'flanged' ? 'btn-accent' : 'btn-secondary'"
+						(click)="playFlangedAudio()"
+						[disabled]="flangerTesting.isProcessing || !flangerTesting.flangedAudioElement"
+					>
+						🌊 Flanged
+					</button>
+				</div>
+
+				<button
+					class="btn-default btn-tertiary mb-2 w-full"
+					(click)="stopFlangerAudio()"
+					[disabled]="flangerTesting.isProcessing"
+				>
+					⏹️ Stop Audio
+				</button>
+
+				<button
+					class="btn-default btn-primary mb-2 w-full"
+					(click)="testFlanger()"
+					[disabled]="flangerTesting.isProcessing || !flangerTesting.originalAudio"
+				>
+					🌊 Apply Flanger
+				</button>
+
+				<button
+					class="btn-default btn-accent mb-2 w-full"
+					(click)="testFlangerFullAudio()"
+					[disabled]="flangerTesting.isProcessing || !flangerTesting.originalAudio"
+				>
+					🌊 Process Full Audio
+				</button>
+
+				<button
+					class="btn-outline btn-primary w-full"
+					(click)="downloadFlangedAudio()"
+					[disabled]="!flangerTesting.flangedBlobUrl"
+				>
+					💾 Download Result
+				</button>
+			</div>
+		</div>
+
+		<!-- Current Status & Info -->
+		<div class="mb-4 flex flex-wrap gap-2">
+			@if (flangerTesting.currentlyPlaying === 'original') {
+				<span class="rounded bg-blue-600 px-2 py-1 text-white">🎵 Original Playing</span>
+			}
+			@if (flangerTesting.currentlyPlaying === 'flanged') {
+				<span class="rounded bg-green-600 px-2 py-1 text-white">🌊 Flanged Playing</span>
+			}
+			@if (flangerTesting.testAudioPlaying && !flangerTesting.currentlyPlaying) {
+				<span class="rounded bg-yellow-600 px-2 py-1 text-white">🎵 Audio Playing</span>
+			}
+			@if (flangerTesting.isProcessing) {
+				<span class="rounded bg-purple-600 px-2 py-1 text-white">⚙️ Processing</span>
+			}
+			@if (flangerTesting.rateHz > 0.1) {
+				<span class="rounded bg-indigo-600 px-2 py-1 text-white">🌊 {{ flangerTesting.rateHz }}Hz LFO</span>
+			}
+		</div>
+
+		<!-- Info -->
+		<div class="rounded-md bg-gray-700 p-4">
+			<h3 class="mb-2 font-semibold text-white">Professional Flanger Features:</h3>
+			<div class="grid gap-3 md:grid-cols-2">
+				<ul class="space-y-1 text-sm text-gray-300">
+					<li>• <strong>LFO Rate</strong> - Modulation speed (0.1-5.0 Hz)</li>
+					<li>• <strong>Depth</strong> - Modulation intensity (0-100%)</li>
+					<li>• <strong>Feedback</strong> - Regeneration amount (0-95%)</li>
+					<li>• <strong>Mix</strong> - Dry/wet balance (0-100%)</li>
+					<li>• <strong>Short Delay</strong> - 1-9ms variable delay line</li>
+					<li>• <strong>Sine Wave LFO</strong> - Smooth modulation curve</li>
+				</ul>
+				<ul class="space-y-1 text-sm text-gray-300">
+					<li>• <strong>Classic Presets</strong> - Subtle to intense effects</li>
+					<li>• <strong>Professional Export</strong> - High-quality WAV output</li>
+					<li>• <strong>Multiple Audio Files</strong> - Test with different sources</li>
+					<li>• <strong>WASM Performance</strong> - Rust-powered processing</li>
+					<li>• <strong>Real-time Preview</strong> - Instant audio playback</li>
+					<li>• <strong>Progress Tracking</strong> - Visual processing feedback</li>
+				</ul>
+			</div>
+			<div class="mt-3 text-xs text-gray-400">
+				<p><strong>Effect:</strong> Variable delay line with LFO modulation creates sweeping comb filtering</p>
+				<p><strong>Quality:</strong> Professional-grade flanger with smooth modulation</p>
+				<p><strong>Use Cases:</strong> Classic rock, psychedelic, spacey effects, jet plane sounds</p>
+			</div>
+		</div>
+	</section>
 </main>
+
+<pixli-snackbar
+	#warning
+	[visible]="this.visible"
+	[position]="'top-right'"
+	[appearence]="'fixed'"
+>
+	<i
+		icon
+		class="fa-solid fa-circle-info text-lg text-yellow-500"
+	></i>
+	<div class="flex w-full rounded-xl bg-gray-800 p-4 px-12">
+		<p class="text-yellow-500">Sorry, you are a sluha narodu party member, you can't make this request</p>
+	</div>
+</pixli-snackbar>
+
+<pixli-snackbar
+	#success
+	[visible]="this.visible"
+	[position]="'top-left'"
+	[appearence]="'fixed'"
+>
+	<i
+		icon
+		class="fa-solid fa-check text-lg text-green-500"
+	></i>
+	<div class="flex w-full rounded-xl bg-quaternary-darker-10% p-4 px-12">
+		<p class="text-green-500">Your vote has been successfuly accepted</p>
+	</div>
+</pixli-snackbar>
+
+<pixli-snackbar
+	#failed
+	[visible]="this.visible"
+	[position]="'bottom-right'"
+	[appearence]="'fixed'"
+>
+	<div class="rounded-xl bg-quaternary-darker-10% p-4 px-12">
+		<p class="text-red-500">Oooops, something went wrong</p>
+	</div>
+</pixli-snackbar>
+
+<pixli-tag-input
+	inputClassName="input-default input-quaternary"
+	suggestionsContainerClassName="bg-quaternary"
+	class="block w-64"
+></pixli-tag-input>
+
+<div class="flex flex-col gap-2 p-4">
+	<input
+		type="text"
+		placeholder="Default"
+		class="input-default"
+	/>
+	<input
+		type="text"
+		placeholder="Primary"
+		class="input-default input-primary"
+	/>
+	<input
+		type="text"
+		placeholder="Secondary"
+		class="input-default input-secondary"
+	/>
+	<input
+		type="text"
+		placeholder="Tertiary"
+		class="input-default input-tertiary"
+	/>
+	<input
+		type="text"
+		placeholder="Quaternary"
+		class="input-default input-quaternary"
+	/>
+	<input
+		type="text"
+		placeholder="Quinary"
+		class="input-default input-quinary"
+	/>
+</div>
+
+<div class="flex flex-wrap gap-4 p-8">
+	<div class="h-64 w-64 bg-unset text-secondary">UNSET→</div>
+	<div class="h-64 w-64 bg-primary text-unset">PRIMARY→</div>
+	<div class="h-64 w-64 bg-tertiary text-primary">TERTIARY→</div>
+	<div class="h-64 w-64 bg-quaternary text-tertiary">QUATERNARY→</div>
+	<div class="h-64 w-64 bg-quinary text-quaternary">QUINARY→</div>
+	<div class="h-64 w-64 bg-accent text-quinary">ACCENT→</div>
+	<div class="h-64 w-64 bg-secondary text-accent">SECONDARY→</div>
+</div>
+
+<button
+	class="btn-default btn-primary"
+	(click)="this.togglePlaying()"
+>
+	Toggle Playing
+</button>
+
+@if (sampleAudio) {
+	<div>
+		<app-audio-visualizer
+			[audioFile]="sampleAudio"
+			[isPlaying]="this.startPlaying"
+			[visualizerMode]="'mirror'"
+			[gap]="3"
+			[useLogarithmicGrouping]="true"
+			[columnNumber]="200"
+			[fillStyle]="'white'"
+		></app-audio-visualizer>
+	</div>
 }
+
+@if (sampleAudio) {
+	<div>
+		<app-audio-visualizer [audioFile]="sampleAudio"></app-audio-visualizer>
+	</div>
+}
+<!-- Material Design Color Showcase -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h1 class="mb-6 text-2xl text-on-surface">Material Design Color Showcase</h1>
+
+	<!-- Role-based Colors -->
+	<div class="mb-8">
+		<h2 class="mb-4 text-xl text-on-surface">Role-based Colors</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div class="flex flex-col items-center justify-center rounded-lg bg-primary p-6">
+				<span class="text-lg font-bold text-on-primary">Primary</span>
+				<span class="text-sm text-on-primary">--primary</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-secondary p-6">
+				<span class="text-lg font-bold text-on-secondary">Secondary</span>
+				<span class="text-sm text-on-secondary">--secondary</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-tertiary p-6">
+				<span class="text-lg font-bold text-on-tertiary">Tertiary</span>
+				<span class="text-sm text-on-tertiary">--tertiary</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Container Colors -->
+	<div class="mb-8">
+		<h2 class="mb-4 text-xl text-on-surface">Container Colors</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div class="flex flex-col items-center justify-center rounded-lg bg-primary-container p-6">
+				<span class="text-lg font-bold text-on-primary-container">Primary Container</span>
+				<span class="text-sm text-on-primary-container">--primary-container</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-secondary-container p-6">
+				<span class="text-lg font-bold text-on-secondary-container">Secondary Container</span>
+				<span class="text-sm text-on-secondary-container">--secondary-container</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-tertiary-container p-6">
+				<span class="text-lg font-bold text-on-tertiary-container">Tertiary Container</span>
+				<span class="text-sm text-on-tertiary-container">--tertiary-container</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Surface Colors -->
+	<div class="mb-8">
+		<h2 class="mb-4 text-xl text-on-surface">Surface Colors</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+			<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface p-6">
+				<span class="text-lg font-bold text-on-surface">Surface</span>
+				<span class="text-sm text-on-surface-variant">--surface</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface-container p-6">
+				<span class="text-lg font-bold text-on-surface">Surface Container</span>
+				<span class="text-sm text-on-surface-variant">--surface-container</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high p-6">
+				<span class="text-lg font-bold text-on-surface">Surface Container High</span>
+				<span class="text-sm text-on-surface-variant">--surface-container-high</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface-variant p-6">
+				<span class="text-lg font-bold text-on-surface-variant">Surface Variant</span>
+				<span class="text-sm text-on-surface-variant">--surface-variant</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Error Colors -->
+	<div class="mb-8">
+		<h2 class="mb-4 text-xl text-on-surface">Error Colors</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			<div class="flex flex-col items-center justify-center rounded-lg bg-error p-6">
+				<span class="text-lg font-bold text-on-error">Error</span>
+				<span class="text-sm text-on-error">--error</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-error-container p-6">
+				<span class="text-lg font-bold text-on-error-container">Error Container</span>
+				<span class="text-sm text-on-error-container">--error-container</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Outline & Other -->
+	<div class="mb-8">
+		<h2 class="mb-4 text-xl text-on-surface">Outline & Other</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div class="flex flex-col items-center justify-center rounded-lg border-2 border-outline bg-surface p-6">
+				<span class="text-lg font-bold text-on-surface">Outline</span>
+				<span class="text-sm text-on-surface-variant">--outline</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg border-2 border-outline-variant bg-surface p-6">
+				<span class="text-lg font-bold text-on-surface">Outline Variant</span>
+				<span class="text-sm text-on-surface-variant">--outline-variant</span>
+			</div>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-inverse-surface p-6">
+				<span class="text-lg font-bold text-inverse-on-surface">Inverse Surface</span>
+				<span class="text-sm text-inverse-on-surface">--inverse-surface</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Palette Tones -->
+	<div class="mb-8">
+		<h2 class="mb-4 text-xl text-on-surface">Primary Palette Tones</h2>
+		<div class="grid grid-cols-4 gap-2 md:grid-cols-8">
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-40 p-2 text-white">
+				<span class="text-xs">40</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-50 p-2 text-white">
+				<span class="text-xs">50</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-60 p-2 text-white">
+				<span class="text-xs">60</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-70 p-2 text-white">
+				<span class="text-xs">70</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-80 p-2">
+				<span class="text-xs">80</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-90 p-2">
+				<span class="text-xs">90</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-95 p-2">
+				<span class="text-xs">95</span>
+			</div>
+			<div class="flex h-16 flex-col items-center justify-center rounded-lg bg-primary-99 p-2">
+				<span class="text-xs">99</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Component Examples -->
+	<div>
+		<h2 class="mb-4 text-xl text-on-surface">Component Examples</h2>
+		<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+			<!-- Buttons -->
+			<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+				<h3 class="mb-3 text-lg text-on-surface">Buttons</h3>
+				<div class="flex flex-wrap gap-2">
+					<button class="btn-default btn-primary">Default</button>
+					<button class="btn-outline btn-primary">Outline</button>
+					<button
+						class="btn-default btn-primary btn-disabled"
+						disabled
+					>
+						Disabled
+					</button>
+				</div>
+			</div>
+
+			<!-- Inputs -->
+			<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+				<h3 class="mb-3 text-lg text-on-surface">Inputs</h3>
+				<div class="flex flex-col gap-3">
+					<!-- Standard Inputs -->
+					<div>
+						<h4 class="text-md mb-2 text-on-surface-variant">Standard Inputs</h4>
+						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+							<input
+								type="text"
+								placeholder="Default input with full borders"
+								class="input-default input-primary"
+							/>
+							<input
+								type="text"
+								placeholder="Outline input style variant"
+								class="input-outline input-primary"
+							/>
+						</div>
+					</div>
+
+					<!-- Input Colors -->
+					<div>
+						<h4 class="text-md mb-2 text-on-surface-variant">Input Colors</h4>
+						<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+							<input
+								type="text"
+								placeholder="Primary input focus"
+								class="input-default input-primary"
+								value="Primary text color"
+							/>
+							<input
+								type="text"
+								placeholder="Secondary input focus"
+								class="input-default input-secondary"
+								value="Secondary focus effect"
+							/>
+							<input
+								type="text"
+								placeholder="Tertiary input focus"
+								class="input-default input-tertiary"
+								value="Tertiary focus effect"
+							/>
+						</div>
+					</div>
+
+					<!-- Input Sizes -->
+					<div>
+						<h4 class="text-md mb-2 text-on-surface-variant">Input Sizes</h4>
+						<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+							<input
+								type="text"
+								placeholder="Small input size"
+								class="input-default input-primary input-sm"
+								value="Small input"
+							/>
+							<input
+								type="text"
+								placeholder="Default input size"
+								class="input-default input-primary"
+								value="Default input"
+							/>
+							<input
+								type="text"
+								placeholder="Large input size"
+								class="input-default input-primary input-lg"
+								value="Large input"
+							/>
+						</div>
+					</div>
+
+					<!-- Input States -->
+					<div>
+						<h4 class="text-md mb-2 text-on-surface-variant">Input States</h4>
+						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+							<input
+								type="text"
+								placeholder="Disabled input state"
+								class="input-default input-primary"
+								value="Disabled input text"
+								disabled
+							/>
+							<input
+								type="text"
+								placeholder="Error input state"
+								class="input-default input-primary input-error"
+								value="Error input text"
+							/>
+						</div>
+					</div>
+
+					<!-- Input with Icons -->
+					<div>
+						<h4 class="text-md mb-2 text-on-surface-variant">Input with Icons</h4>
+						<div class="grid grid-cols-1 gap-3">
+							<div class="input-group">
+								<span class="input-icon input-icon-left">
+									<i class="fa-solid fa-search"></i>
+								</span>
+								<input
+									type="text"
+									placeholder="Search with left icon..."
+									class="input-default input-primary input-with-icon-left"
+								/>
+							</div>
+							<div class="input-group">
+								<input
+									type="text"
+									placeholder="Email with right icon..."
+									class="input-default input-primary input-with-icon-right"
+									value="example@email.com"
+								/>
+								<span class="input-icon input-icon-right">
+									<i class="fa-solid fa-envelope"></i>
+								</span>
+							</div>
+							<div class="input-group">
+								<span class="input-icon input-icon-left">
+									<i class="fa-solid fa-user"></i>
+								</span>
+								<input
+									type="text"
+									placeholder="Username with left icon..."
+									class="input-outline input-primary input-with-icon-left"
+									value="john.doe"
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- Material Theme Converter Section -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h1 class="mb-6 text-2xl text-on-surface">Material Theme Converter</h1>
+	<p class="mb-6 text-on-surface-variant">Convert Material Theme JSON files to SCSS variables</p>
+
+	<app-theme-converter></app-theme-converter>
+</section>
+
+<!-- Format Pipe Examples Section -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h1 class="mb-6 text-2xl text-on-surface">Format Pipe Examples</h1>
+	<p class="mb-6 text-on-surface-variant">Convert values between different units like bytes, KB, MB, etc.</p>
+
+	<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+		<!-- Auto-formatting Examples -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg text-on-surface">Auto-formatting (Decimal)</h3>
+			<div class="space-y-2 text-sm">
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ tinyBytes }} bytes:</span>
+					<span class="font-mono">{{ tinyBytes | dataSizeUnit }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ smallBytes }} bytes:</span>
+					<span class="font-mono">{{ smallBytes | dataSizeUnit }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ mediumBytes }} bytes:</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ largeBytes }} bytes:</span>
+					<span class="font-mono">{{ largeBytes | dataSizeUnit }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ hugeBytes }} bytes:</span>
+					<span class="font-mono">{{ hugeBytes | dataSizeUnit }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ zeroBytes }} bytes:</span>
+					<span class="font-mono">{{ zeroBytes | dataSizeUnit }}</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Binary Formatting Examples -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg text-on-surface">Auto-formatting (Binary)</h3>
+			<div class="space-y-2 text-sm">
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ tinyBytes }} bytes:</span>
+					<span class="font-mono">{{ tinyBytes | dataSizeUnit: {binary: true} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ smallBytes }} bytes:</span>
+					<span class="font-mono">{{ smallBytes | dataSizeUnit: {binary: true} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ mediumBytes }} bytes:</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit: {binary: true} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ largeBytes }} bytes:</span>
+					<span class="font-mono">{{ largeBytes | dataSizeUnit: {binary: true} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">{{ hugeBytes }} bytes:</span>
+					<span class="font-mono">{{ hugeBytes | dataSizeUnit: {binary: true} }}</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Specific Unit Examples -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg text-on-surface">Specific Units</h3>
+			<div class="space-y-2 text-sm">
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Convert to KB:</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit: {unit: 'KB'} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Convert to MB:</span>
+					<span class="font-mono">{{ largeBytes | dataSizeUnit: {unit: 'MB'} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Convert to GB:</span>
+					<span class="font-mono">{{ hugeBytes | dataSizeUnit: {unit: 'GB'} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Convert to KiB:</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit: {unit: 'KiB', binary: true} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Convert to MiB:</span>
+					<span class="font-mono">{{ largeBytes | dataSizeUnit: {unit: 'MiB', binary: true} }}</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Precision and Options Examples -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg text-on-surface">Precision & Options</h3>
+			<div class="space-y-2 text-sm">
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">High precision (4 decimals):</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit: {precision: 4} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">No decimals:</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit: {precision: 0} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Value only (no unit):</span>
+					<span class="font-mono">{{ mediumBytes | dataSizeUnit: {showUnit: false} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Custom precision + binary:</span>
+					<span class="font-mono">{{ largeBytes | dataSizeUnit: {precision: 3, binary: true} }}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-on-surface-variant">Specific unit + precision:</span>
+					<span class="font-mono">{{ hugeBytes | dataSizeUnit: {unit: 'TB', precision: 1} }}</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Usage Examples -->
+	<div class="mt-8 rounded-lg border border-outline-variant bg-surface-container p-4">
+		<h3 class="mb-4 text-lg text-on-surface">Usage Examples</h3>
+		<div class="space-y-2 font-mono text-sm text-on-surface-variant">
+			<div>
+				<code>{{ '{{ value | dataSizeUnit }}' }}</code> - Auto-format with default options
+			</div>
+			<div>
+				<code>{{ '{{ value | dataSizeUnit:{unit: \'MB\'} }}' }}</code> - Convert to specific unit
+			</div>
+			<div>
+				<code>{{ '{{ value | dataSizeUnit:{binary: true} }}' }}</code> - Use binary units (KiB, MiB, etc.)
+			</div>
+			<div>
+				<code>{{ '{{ value | dataSizeUnit:{precision: 3} }}' }}</code> - Set decimal precision
+			</div>
+			<div>
+				<code>{{ '{{ value | dataSizeUnit:{showUnit: false} }}' }}</code> - Show value without unit
+			</div>
+			<div>
+				<code>{{ '{{ value | dataSizeUnit:{unit: \'GB\', precision: 2, binary: true} }}' }}</code> - Combined options
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- Chat Component Showcase -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h1 class="mb-6 text-2xl text-on-surface">Chat Component Showcase</h1>
+	<p class="mb-6 text-on-surface-variant">Demonstrating different chat styles with configurable timestamp modes and avatar display options</p>
+
+	<div class="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3">
+		<!-- Default Chat Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Default Chat Style</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: Time sections enabled, message timestamps on hover, avatars on last message in series</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="basicMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="defaultAvatarMode"
+					[showTimeSections]="true"
+					[maxTimeGapMinutes]="5"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'hover'"
+					[showInput]="true"
+					[showAttachments]="true"
+					[showEmojiPicker]="true"
+					[inputPlaceholder]="'Type your message...'"
+					(messageSent)="onBasicMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(attachmentSelected)="onAttachmentSelected($event)"
+					(emojiSelected)="onEmojiSelected($event)"
+					(inputFocused)="onInputFocused()"
+					(inputBlurred)="onInputBlurred()"
+					(reconnectRequested)="onReconnectRequested()"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- WhatsApp-style Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">WhatsApp Style</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: No time sections, always visible timestamps, avatars on every message</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="whatsappMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="whatsappAvatarMode"
+					[showTimeSections]="false"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'always'"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowReply]="true"
+					(messageSent)="onWhatsappMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(contextMenuAction)="onWhatsappContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- Instagram-style Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Instagram Style</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: Time sections only, no individual timestamps, avatars at top of first message</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="timeSectionsMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="instagramAvatarMode"
+					[showTimeSections]="true"
+					[maxTimeGapMinutes]="10"
+					[showMessageTimestamps]="false"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowReply]="true"
+					(messageSent)="onTimeSectionsMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(contextMenuAction)="onInstagramContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- Minimal Chat Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Minimal Style</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: No timestamps, no time sections, avatars on last message only</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="basicMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'blocks-last-side'"
+					[showTimeSections]="false"
+					[showMessageTimestamps]="false"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowReply]="true"
+					(messageSent)="onBasicMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(contextMenuAction)="onContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- Custom Template Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Custom Template</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: Custom message template with different styling</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="whatsappMessages"
+					[currentUser]="users.user2"
+					[messageTemplate]="customMessageTemplate"
+					[avatarDisplayMode]="'each'"
+					[showTimeSections]="true"
+					[maxTimeGapMinutes]="5"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowReply]="true"
+					(messageSent)="onWhatsappMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(contextMenuAction)="onWhatsappContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+
+			<!-- Custom Message Template -->
+			<ng-template
+				#customMessageTemplate
+				let-message
+			>
+				<div class="mb-3 flex items-start gap-2">
+					<div class="bg-accent flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-xs font-bold text-white">
+						{{ message.user.name.charAt(0) }}
+					</div>
+					<div class="flex-1">
+						<div class="flex items-baseline gap-2">
+							<span class="text-accent text-xs font-medium">{{ message.user.name }}</span>
+							<span class="text-xs text-neutral-60">{{ message.timestamp | date: 'short' }}</span>
+						</div>
+						<div class="bg-accent-container mt-1 rounded-lg p-2">
+							<p class="text-on-accent-container text-sm">{{ message.message }}</p>
+						</div>
+					</div>
+				</div>
+			</ng-template>
+		</div>
+
+		<!-- Configuration Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Configuration Options</h3>
+			<div class="space-y-3 text-xs text-on-surface-variant">
+				<div>
+					<strong>Avatar Display Modes:</strong>
+					<ul class="ml-4 mt-1 list-disc space-y-1">
+						<li><code>each</code> - Show avatar on every message</li>
+						<li><code>blocks-last-side</code> - Show avatar on last message in series (side)</li>
+						<li><code>blocks-first-top</code> - Show avatar on first message in series (top)</li>
+					</ul>
+				</div>
+				<div>
+					<strong>Timestamp Options:</strong>
+					<ul class="ml-4 mt-1 list-disc space-y-1">
+						<li><code>showTimeSections</code> - Show time separators between message groups</li>
+						<li><code>showMessageTimestamps</code> - Show timestamps on individual messages</li>
+						<li><code>messageTimestampMode</code> - 'hover' or 'always'</li>
+						<li><code>maxTimeGapMinutes</code> - Time gap threshold for sections</li>
+					</ul>
+				</div>
+				<div>
+					<strong>Timestamp Format Options:</strong>
+					<ul class="ml-4 mt-1 list-disc space-y-1">
+						<li><code>timeFormat</code> - 'auto', '12h', '24h', or 'custom'</li>
+						<li><code>customTimeFormat</code> - Custom format string (e.g., 'HH:mm', 'hh:mm A')</li>
+						<li><code>showSeconds</code> - Include seconds in timestamp</li>
+						<li><code>locale</code> - Locale for time formatting</li>
+					</ul>
+				</div>
+				<div>
+					<strong>Template Options:</strong>
+					<ul class="ml-4 mt-1 list-disc space-y-1">
+						<li><code>messageTemplate</code> - Custom template for all messages</li>
+						<li><code>outgoingMessageTemplate</code> - Custom template for outgoing messages only</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+
+		<!-- 24-Hour Format Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">24-Hour Format</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: 24-hour time format, always visible timestamps, with seconds</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="basicMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'blocks-last-side'"
+					[showTimeSections]="true"
+					[maxTimeGapMinutes]="5"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'always'"
+					[timeFormat]="'24h'"
+					[showSeconds]="true"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowReply]="true"
+					(messageSent)="onBasicMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(contextMenuAction)="onContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- Custom Format Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Custom Format</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: Custom timestamp format "HH:mm:ss", hover timestamps</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="whatsappMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'each'"
+					[showTimeSections]="false"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'hover'"
+					[timeFormat]="'custom'"
+					[customTimeFormat]="'HH:mm:ss'"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowReply]="true"
+					(messageSent)="onWhatsappMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(contextMenuAction)="onWhatsappContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- Avatar Fallback Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Avatar Fallback System</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: FontAwesome icons as fallbacks, error handling for broken images, automatic fallback detection</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="avatarsEachMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'each'"
+					[showTimeSections]="false"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'always'"
+					[showInput]="false"
+				>
+				</app-chat>
+			</div>
+		</div>
+
+		<!-- Integration Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Integration Example</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: Complete event handling, custom auth integration, real-time messaging simulation</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="basicMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'blocks-last-side'"
+					[showTimeSections]="true"
+					[maxTimeGapMinutes]="3"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'hover'"
+					[showInput]="true"
+					[showAttachments]="true"
+					[showEmojiPicker]="true"
+					[inputPlaceholder]="'Send a message to see event handling...'"
+					[maxMessageLength]="500"
+					[enableContextMenu]="true"
+					[allowDelete]="true"
+					[allowDeleteOnlyOwn]="true"
+					[deletionPolicy]="'remove'"
+					[allowReply]="true"
+					[allowEdit]="true"
+					[allowEditOnlyOwn]="true"
+					[editTimeLimit]="5"
+					(messageSent)="onBasicMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(attachmentSelected)="onAttachmentSelected($event)"
+					(emojiSelected)="onEmojiSelected($event)"
+					(inputFocused)="onInputFocused()"
+					(inputBlurred)="onInputBlurred()"
+					(reconnectRequested)="onReconnectRequested()"
+					(messageDelete)="onDeleteMessage($event)"
+					(messageReply)="onMessageReply($event)"
+					(messageEdit)="onMessageEdit($event)"
+					(contextMenuAction)="onContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+
+			<div class="mt-4 rounded-lg bg-surface-container-high p-3">
+				<h4 class="mb-2 text-sm font-semibold text-on-surface">Integration Code Example:</h4>
+				<pre class="overflow-x-auto text-xs text-on-surface-variant"><code>// In your component:
+onMessageSent(event: {{ '{' }}message: string; user: ChatUser; timestamp: Date{{ '}' }}): void {{ '{' }}
+  // Send to your backend/WebSocket service
+  this.messagingService.sendMessage(event);
+  
+  // Add to local messages array for immediate UI update
+  this.messages.push(event);
+{{ '}' }}
+
+onTyping(event: {{ '{' }}user: ChatUser; isTyping: boolean{{ '}' }}): void {{ '{' }}
+  // Notify other users via WebSocket
+  this.socketService.emit('typing', event);
+{{ '}' }}</code></pre>
+			</div>
+		</div>
+
+		<!-- Custom Templates with ng-content Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Custom Templates (Template Inputs)</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">Features: Custom mark-deleted template using template inputs, custom reply preview</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="customTemplatesMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'blocks-last-side'"
+					[showTimeSections]="true"
+					[maxTimeGapMinutes]="5"
+					[showMessageTimestamps]="true"
+					[messageTimestampMode]="'hover'"
+					[showInput]="true"
+					[enableContextMenu]="true"
+					[allowDelete]="true"
+					[allowDeleteOnlyOwn]="true"
+					[deletionPolicy]="'mark-deleted'"
+					[allowReply]="true"
+					[allowEdit]="true"
+					[allowEditOnlyOwn]="true"
+					[editTimeLimit]="5"
+					[replyPreviewTemplate]="customReplyPreviewTemplate"
+					[markDeletedTemplate]="customMarkDeletedTemplate"
+					(messageSent)="onCustomTemplatesMessageSent($event)"
+					(messageTyping)="onTyping($event)"
+					(messageDelete)="onCustomTemplateMessageDelete($event)"
+					(messageReply)="onCustomTemplateMessageReply($event)"
+					(messageEdit)="onCustomTemplateMessageEdit($event)"
+					(contextMenuAction)="onCustomTemplateContextMenuAction($event)"
+				>
+				</app-chat>
+			</div>
+
+			<!-- Custom Reply Preview Template -->
+			<ng-template
+				#customReplyPreviewTemplate
+				let-message
+				let-truncatedMessage="truncatedMessage"
+				let-onClose="onClose"
+			>
+				<div class="border-accent bg-accent-container/30 flex items-center gap-3 rounded-t-lg border-l-4 px-4 py-3">
+					<div class="flex items-center gap-2">
+						<i class="fa-solid fa-reply text-accent"></i>
+						<span class="text-accent text-sm font-semibold">Replying to {{ message.user.name }}</span>
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-on-accent-container/80 truncate text-sm">{{ truncatedMessage }}</p>
+					</div>
+					<button
+						type="button"
+						class="text-accent/60 hover:bg-accent-container/50 flex-shrink-0 rounded-full p-1 transition-colors"
+						(click)="onClose()"
+						aria-label="Cancel reply"
+					>
+						<i class="fa-solid fa-times"></i>
+					</button>
+				</div>
+			</ng-template>
+
+			<!-- Custom Mark-Deleted Template -->
+			<ng-template
+				#customMarkDeletedTemplate
+				let-message
+				let-isIncoming="isIncoming"
+			>
+				<div class="bg-error-container/20 flex items-center gap-2 rounded-lg p-2">
+					<i class="fa-solid fa-ban text-error"></i>
+					<span class="text-sm font-medium text-error">
+						@if (isIncoming) {
+							{{ message.user.name }} removed this message
+						} @else {
+							You removed this message
+						}
+					</span>
+					<span class="text-error/70 ml-auto text-xs">
+						{{ message.deletedTimestamp | date: 'short' }}
+					</span>
+				</div>
+			</ng-template>
+
+			<div class="mt-4 rounded-lg bg-surface-container-high p-3">
+				<h4 class="mb-2 text-sm font-semibold text-on-surface">Template Input Usage:</h4>
+				<pre class="overflow-x-auto text-xs text-on-surface-variant"><code>&lt;app-chat
+  [messages]="messages"
+  [replyPreviewTemplate]="customReplyTemplate"
+  [markDeletedTemplate]="customDeletedTemplate"
+  [deletionPolicy]="'mark-deleted'"&gt;
+&lt;/app-chat&gt;
+
+&lt;!-- Custom mark-deleted template --&gt;
+&lt;ng-template #customDeletedTemplate let-message let-isIncoming="isIncoming"&gt;
+  &lt;div class="custom-deleted-message"&gt;
+    &amp;#123;&amp;#123; isIncoming ? message.user.name + ' removed this' : 'You removed this' &amp;#125;&amp;#125;
+  &lt;/div&gt;
+&lt;/ng-template&gt;</code></pre>
+			</div>
+		</div>
+
+		<!-- Custom Input Template Demo -->
+		<div class="rounded-lg border border-outline-variant bg-surface-container p-4">
+			<h3 class="mb-4 text-lg font-semibold text-on-surface">Custom Input Template</h3>
+			<p class="mb-4 text-sm text-on-surface-variant">A custom input passed via `inputTemplate`, styled with an error/red theme.</p>
+
+			<div class="h-96 overflow-hidden rounded-lg border border-outline-variant">
+				<app-chat
+					[messages]="basicMessages"
+					[currentUser]="users.user2"
+					[avatarDisplayMode]="'each'"
+					[showTimeSections]="true"
+					[inputTemplate]="customRedInput"
+					(messageSent)="onBasicMessageSent($event)"
+				>
+				</app-chat>
+			</div>
+
+			<!-- Custom Red Input Template -->
+			<ng-template
+				#customRedInput
+				let-input
+			>
+				<div class="border-error/50 bg-error-container/20 flex items-center gap-3 border-t-2 p-3">
+					<textarea
+						#customTextarea
+						class="placeholder-on-surface-variant/70 w-full resize-none rounded-lg border-2 border-error bg-surface p-2 text-on-surface focus:border-error focus:ring-error"
+						[placeholder]="input.placeholder"
+						[(ngModel)]="input.messageContent"
+						(input)="input.onInput()"
+						(keydown)="input.onKeyDown($event)"
+						(focus)="input.onFocus()"
+						(blur)="input.onBlur()"
+						[disabled]="input.disabled"
+						rows="1"
+					></textarea>
+					<button
+						type="button"
+						class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-error text-on-error transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+						(click)="input.sendMessage()"
+						[disabled]="!input.canSend"
+						aria-label="Send Message"
+					>
+						<i class="fa-solid fa-paper-plane"></i>
+					</button>
+				</div>
+			</ng-template>
+		</div>
+	</div>
+</section>
+
+<!-- AI Helper Bot Showcase -->
+<section class="my-10 rounded-lg bg-surface p-6">
+	<h1 class="mb-6 text-2xl text-on-surface">AI Helper Bot Showcase</h1>
+	<p class="mb-6 text-on-surface-variant">Demonstrates the AI helper bot integration using SignalR for real-time communication.</p>
+
+	<div class="h-[70vh] min-h-[500px] rounded-lg border border-outline-variant bg-surface-container p-4">
+		<app-helper-bot></app-helper-bot>
+	</div>
+</section>
