@@ -32,6 +32,29 @@ npx fua-fua --input src/app/app.component.html --output src/app/app.component.ht
 }
 ```
 
+## Pre-commit (Husky)
+
+```bash
+npm i -D husky fua-fua
+npx husky init
+cp node_modules/fua-fua/husky/pre-commit .husky/pre-commit
+chmod +x .husky/pre-commit
+```
+
+The hook runs `fua-fua --only-staged` (formats staged HTML, then re-stages).
+
+Format the whole project:
+
+```bash
+npx fua-fua --all --config .fua/config.json
+```
+
+CI / pre-push check (changed files vs base branch):
+
+```bash
+npx fua-fua --check --changed --config .fua/config.json
+```
+
 ## Config (`.fua/config.json`)
 
 ```json
@@ -40,6 +63,8 @@ npx fua-fua --input src/app/app.component.html --output src/app/app.component.ht
   "use_tabs": true,
   "print_width": 100,
   "wrap_attributes": true,
+  "include": ["**/*.html"],
+  "exclude": ["\\.ts$", "pop-up\\.component\\.html"],
   "class_wrap_tokens_min": 6,
   "class_wrap_tokens_per_line": 2,
   "plugins": [

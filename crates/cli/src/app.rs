@@ -1,11 +1,12 @@
 use crate::args::Args;
+use crate::file_selection::{self, FileSelector};
 use fua_core::config::{FormatterConfig, PluginConfig};
 use fua_core::engine::FormatEngine;
 use glob::glob;
+use std::env;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::env;
 
 type CliResult<T> = Result<T, String>;
 
@@ -13,6 +14,10 @@ pub(crate) fn run(args: Args) -> CliResult<()> {
     let mut config = load_formatter_config(args.config.as_deref())?;
     apply_cli_overrides(&mut config, &args);
     let plugin_configs = resolve_plugin_configs(&config, args.config.as_deref(), &args.plugin);
+
+    if args.only_staged || args.all || args.changed {
+        return run_batch_mode(&args, config, &plugin_configs);
+    }
 
     if args.input.is_empty() {
         // stdin → stdout / --output
@@ -54,6 +59,79 @@ pub(crate) fn run(args: Args) -> CliResult<()> {
         }
     }
 
+    Ok(())
+}
+
+fn run_batch_mode(
+    args: &Args,
+    config: FormatterConfig,
+    plugin_configs: &[PluginConfig],
+) -> CliResult<()> {
+    if args.output.is_some() {
+        return Err(
+            "--output cannot be used with --only-staged or --all; files are formatted in-place."
+                .to_string(),
+        );
+    }
+
+    let repo_root = file_selection::git_repo_root()?;
+    let selector = FileSelector::from_config(&config);
+    let paths = if args.only_staged {
+        selector.collect_staged_files(&repo_root)?
+    } else if args.changed {
+        let base_ref = file_selection::resolve_base_ref();
+        selector.collect_changed_files(&repo_root, &base_ref)?
+    } else {
+        selector.collect_all_files(&repo_root)?
+    };
+
+    if paths.is_empty() {
+        println!("no files to format.");
+        return Ok(());
+    }
+
+    let total_candidates = paths.len();
+    let mut formatted_paths = Vec::new();
+    let mut needs_formatting = Vec::new();
+    for path in paths {
+        let input = read_file(&path)?;
+        if input.trim().is_empty() {
+            continue;
+        }
+        let output = run_engine(&input, config.clone(), plugin_configs)?;
+        if args.check {
+            if output != input {
+                needs_formatting.push(path.display().to_string());
+            }
+            continue;
+        }
+        fs::write(&path, &output).map_err(|error| {
+            format!("failed to write '{}': {error}", path.display())
+        })?;
+        println!("formatted: {}", path.display());
+        formatted_paths.push(path);
+    }
+
+    if args.check {
+        if needs_formatting.is_empty() {
+            println!("all {total_candidates} file(s) are formatted.");
+            return Ok(());
+        }
+        return Err(format!(
+            "{} file(s) need formatting:\n  {}\n\nRun: fua-fua --only-staged --config .fua/config.json",
+            needs_formatting.len(),
+            needs_formatting.join("\n  ")
+        ));
+    }
+
+    if args.only_staged {
+        file_selection::restage_files(&formatted_paths, &repo_root)?;
+    }
+
+    println!(
+        "done — {} file(s) formatted.",
+        formatted_paths.len()
+    );
     Ok(())
 }
 
@@ -276,6 +354,10 @@ mod tests {
             indent_size: None,
             use_tabs: None,
             plugin: Vec::new(),
+            only_staged: false,
+            all: false,
+            changed: false,
+            check: false,
         }
     }
 
@@ -294,16 +376,18 @@ mod tests {
 
     #[test]
     fn relative_plugin_paths_are_resolved_from_config_directory() {
+        let config_dir = Path::new("/project");
         let resolved = resolve_plugin_path(
             Path::new("plugins/angular.wasm"),
-            Some(Path::new(r"C:\project\config.json")),
+            Some(config_dir.join("config.json").as_path()),
         );
 
-        assert_eq!(resolved, PathBuf::from(r"C:\project\plugins\angular.wasm"));
+        assert_eq!(resolved, config_dir.join("plugins/angular.wasm"));
     }
 
     #[test]
     fn requested_plugins_merge_configured_and_cli_sources() {
+        let config_dir = Path::new("/project");
         let config = FormatterConfig {
             plugins: vec![PluginConfig {
                 path: Some("plugins/configured.wasm".to_string()),
@@ -318,22 +402,22 @@ mod tests {
 
         let plugins = resolve_plugin_configs(
             &config,
-            Some(Path::new(r"C:\project\config.json")),
-            &[PathBuf::from(r"C:\plugins\cli.wasm")],
+            Some(config_dir.join("config.json").as_path()),
+            &[PathBuf::from("/plugins/cli.wasm")],
         );
 
         assert_eq!(plugins.len(), 3);
         assert_eq!(
             plugins[0].path.as_deref().map(PathBuf::from),
-            Some(PathBuf::from(r"C:\project\plugins\configured.wasm"))
+            Some(config_dir.join("plugins/configured.wasm"))
         );
         assert_eq!(
             plugins[1].path.as_deref().map(PathBuf::from),
-            Some(PathBuf::from(r"C:\project\plugins\legacy.wasm"))
+            Some(config_dir.join("plugins/legacy.wasm"))
         );
         assert_eq!(
             plugins[2].path.as_deref().map(PathBuf::from),
-            Some(PathBuf::from(r"C:\plugins\cli.wasm"))
+            Some(PathBuf::from("/plugins/cli.wasm"))
         );
     }
 

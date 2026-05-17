@@ -1,5 +1,6 @@
 mod app;
 mod args;
+mod file_selection;
 
 use args::Args;
 use clap::Parser as _;

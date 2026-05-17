@@ -25,6 +25,11 @@ pub struct FormatterConfig {
     pub wrap_content: bool,
     pub class_wrap_tokens_min: Option<usize>,
     pub class_wrap_tokens_per_line: usize,
+    /// Glob patterns for files to include when using `--all` or `--only-staged`.
+    /// Default: all files (`["*"]`).
+    pub include: Vec<String>,
+    /// Regex patterns (or plain path substrings) for files to skip.
+    pub exclude: Vec<String>,
     /// Preferred plugin list for the formatter host.
     pub plugins: Vec<PluginConfig>,
     /// Legacy single-plugin configuration kept for backward compatibility.
@@ -44,6 +49,8 @@ impl Default for FormatterConfig {
             wrap_content: false,
             class_wrap_tokens_min: None,
             class_wrap_tokens_per_line: 1,
+            include: vec!["*".to_string()],
+            exclude: Vec::new(),
             plugins: Vec::new(),
             plugin: PluginConfig::default(),
         }

@@ -1,0 +1,14 @@
+{
+  "indent_size": 2,
+  "use_tabs": false,
+  "print_width": 100,
+  "wrap_attributes": true,
+  "include": [
+    "**/*.html"
+  ],
+  "exclude": [
+    "\\.ts$",
+    "pop-up\\.component\\.html"
+  ],
+  "plugins": []
+}

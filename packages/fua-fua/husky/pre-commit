@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+npx fua-fua --only-staged --config .fua/config.json
