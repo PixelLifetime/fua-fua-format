@@ -50,6 +50,11 @@ impl FileSelector {
         self.matches_include(&normalized) && !self.matches_exclude(&normalized)
     }
 
+    fn should_format_relative_to(&self, path: &Path, repo_root: &Path) -> bool {
+        let relative = path.strip_prefix(repo_root).unwrap_or(path);
+        self.should_format(relative)
+    }
+
     pub(crate) fn collect_staged_files(&self, repo_root: &Path) -> Result<Vec<PathBuf>, String> {
         let output = Command::new("git")
             .args([
@@ -72,7 +77,7 @@ impl FileSelector {
         Ok(self
             .filter_existing(repo_root, paths)
             .into_iter()
-            .filter(|path| self.should_format(path))
+            .filter(|path| self.should_format_relative_to(path, repo_root))
             .collect())
     }
 
@@ -104,7 +109,7 @@ impl FileSelector {
         Ok(self
             .filter_existing(repo_root, paths)
             .into_iter()
-            .filter(|path| self.should_format(path))
+            .filter(|path| self.should_format_relative_to(path, repo_root))
             .collect())
     }
 
@@ -327,5 +332,28 @@ mod tests {
     fn star_include_normalizes_to_recursive_glob() {
         let selector = selector(&["*"], &[]);
         assert!(selector.matches_include("nested/dir/file.html"));
+    }
+
+    #[test]
+    fn demo_include_exclude_rules() {
+        let selector = selector(
+            &["examples/demo-include-exclude/**/*.html"],
+            &["pop-up\\.component\\.html", "legacy/"],
+        );
+        assert!(selector.should_format(Path::new(
+            "examples/demo-include-exclude/src/checkout.component.html",
+        )));
+        assert!(selector.should_format(Path::new(
+            "examples/demo-include-exclude/src/home.component.html",
+        )));
+        assert!(!selector.should_format(Path::new(
+            "examples/demo-include-exclude/src/pop-up.component.html",
+        )));
+        assert!(!selector.should_format(Path::new(
+            "examples/demo-include-exclude/legacy/old-page.html",
+        )));
+        assert!(!selector.should_format(Path::new(
+            "examples/demo-include-exclude/src/notes.ts",
+        )));
     }
 }

@@ -20,6 +20,8 @@ You can use the formatter in two main ways:
 
 ### Use in your own project (npm)
 
+**Angular integration guide:** [docs/INTEGRATION_ANGULAR.md](docs/INTEGRATION_ANGULAR.md) · npm package README: [packages/fua-fua/README.md](packages/fua-fua/README.md)
+
 Install formatter + plugins:
 
 ```bash
@@ -56,15 +58,22 @@ Create `.fua/config.json` in your project root:
 }
 ```
 
-Add scripts to your app `package.json`:
+Add scripts to your app `package.json` (no custom Node wrapper required):
 
 ```json
 {
   "scripts": {
-    "format:html": "fua-fua --input \"src/**/*.html\" --config .fua/config.json",
-    "format:html:file": "fua-fua --input \"src/app/app.component.html\" --config .fua/config.json --output \"src/app/app.component.html\""
+    "format:html": "fua-fua --all --config .fua/config.json",
+    "format:html:staged": "fua-fua --only-staged --config .fua/config.json",
+    "format:html:check": "fua-fua --check --changed --config .fua/config.json"
   }
 }
+```
+
+Single file:
+
+```bash
+npx fua-fua --input src/app/app.component.html --output src/app/app.component.html --config .fua/config.json
 ```
 
 Run:
@@ -113,15 +122,15 @@ To format the whole project instead of staged files:
 npx fua-fua --all --config .fua/config.json
 ```
 
-### CI format check on pull requests
+### CI format check (consumer apps)
 
-This repo runs a GitHub Actions job that fails when changed HTML files are not formatted:
+In your application repo, add a PR job that runs:
 
 ```bash
-fua-fua --check --changed --config .fua/config.json
+npx fua-fua --check --changed --config .fua/config.json
 ```
 
-Use the same command locally before pushing.
+See [docs/INTEGRATION_ANGULAR.md](docs/INTEGRATION_ANGULAR.md) for a full workflow example.
 
 ### Develop from Rust source
 

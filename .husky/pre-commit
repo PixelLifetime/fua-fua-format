@@ -1,9 +1,11 @@
 #!/usr/bin/env sh
-# Prefer locally built CLI (dev); fall back to npm binary after publish.
-if [ -x target/debug/fua-fua ]; then
-  target/debug/fua-fua --only-staged --config .fua/config.json
-elif [ -x target/release/fua-fua ]; then
-  target/release/fua-fua --only-staged --config .fua/config.json
-else
-  npx fua-fua --only-staged --config .fua/config.json
-fi
+# Example pre-commit hook for consumer apps (not wired in this repo).
+# Copy to your Angular project after: npm i -D husky fua-fua && npx husky init
+#
+#   cp node_modules/fua-fua/husky/pre-commit .husky/pre-commit
+#   chmod +x .husky/pre-commit
+#
+# Or use this one-liner in your app's .husky/pre-commit:
+#   npx fua-fua --only-staged --config .fua/config.json
+
+exit 0
