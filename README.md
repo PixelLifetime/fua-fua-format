@@ -20,7 +20,7 @@ You can use the formatter in two main ways:
 
 ### Use in your own project (npm)
 
-**Angular integration guide:** [docs/INTEGRATION_ANGULAR.md](docs/INTEGRATION_ANGULAR.md) · npm package README: [packages/fua-fua/README.md](packages/fua-fua/README.md)
+**Angular / npm integration:** [packages/fua-fua/README.md](packages/fua-fua/README.md)
 
 Install formatter + plugins:
 
@@ -130,7 +130,7 @@ In your application repo, add a PR job that runs:
 npx fua-fua --check --changed --config .fua/config.json
 ```
 
-See [docs/INTEGRATION_ANGULAR.md](docs/INTEGRATION_ANGULAR.md) for a full workflow example.
+See [packages/fua-fua/README.md](packages/fua-fua/README.md) for a full workflow example.
 
 ### Develop from Rust source
 
