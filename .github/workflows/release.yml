@@ -139,6 +139,66 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Fail fast before building artifacts into packages: invalid/expired tokens
+      # return E401 from `npm whoami`; missing @fua-fua access shows up here too.
+      - name: Verify NPM_TOKEN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is empty or not available to this workflow (fork PRs and some environments omit secrets)."
+            exit 1
+          fi
+
+          echo "Checking registry connectivity..."
+          npm ping
+
+          echo "Verifying token is accepted by the registry (npm whoami)..."
+          if ! NPM_USER=$(npm whoami 2>&1); then
+            echo "::error::NPM_TOKEN is invalid or expired, or npm rejected it (see output above). Create or re-authorize a token on npmjs.com if needed."
+            exit 1
+          fi
+          echo "Authenticated as: ${NPM_USER}"
+
+          echo "Listing @fua-fua package access for this token..."
+          if ! ACCESS=$(npm access list packages @fua-fua 2>&1); then
+            echo "::error::Token for '${NPM_USER}' cannot read @fua-fua access (org SSO may need to authorize this token on npmjs.com)."
+            exit 1
+          fi
+          echo "${ACCESS}"
+
+          REQUIRED_SCOPED=(
+            @fua-fua/win32-x64
+            @fua-fua/linux-x64
+            @fua-fua/darwin-x64
+            @fua-fua/darwin-arm64
+            @fua-fua/plugin-tailwind
+            @fua-fua/plugin-angular
+          )
+          for pkg in "${REQUIRED_SCOPED[@]}"; do
+            if ! echo "${ACCESS}" | grep -q "${pkg}: read-write"; then
+              echo "::error::${NPM_USER} lacks read-write on ${pkg} (required for release publish)."
+              exit 1
+            fi
+          done
+
+          echo "Checking access to unscoped fua-fua (published last in this workflow)..."
+          if npm access list packages 2>/dev/null | grep -q '^fua-fua: read-write'; then
+            echo "fua-fua: read-write"
+          else
+            echo "::warning::${NPM_USER} may lack read-write on fua-fua; platform publishes can still succeed but the final publish step may fail."
+          fi
+
+          if npm token list 2>/dev/null; then
+            echo "Token list above may include expiry dates when this token has account read access."
+          else
+            echo "Note: this token cannot run 'npm token list' (common for granular publish tokens). A successful 'npm whoami' means the registry currently accepts the token."
+          fi
 
       # Restore all built artifacts
       - name: Download all artifacts
@@ -191,6 +251,11 @@ jobs:
               fs.writeFileSync('$PKG_JSON', JSON.stringify(p, null, 2) + '\n');
             "
           done
+
+      - name: Verify publish dry-run (linux platform package)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "./packages/fua-fua-linux-x64" --access public --dry-run
 
       # Publish platform-specific packages first (fua-fua depends on them)
       - name: Publish platform packages
