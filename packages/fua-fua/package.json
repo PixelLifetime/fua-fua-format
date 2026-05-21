@@ -11,9 +11,15 @@
   "bin": {
     "fua-fua": "./bin/run.js"
   },
+  "scripts": {
+    "format": "fua-fua --all --config .fua/config.json",
+    "format:staged": "fua-fua --only-staged --config .fua/config.json",
+    "format:check": "fua-fua --check --changed --config .fua/config.json"
+  },
   "files": [
     "bin",
     "dist",
+    "husky",
     "README.md"
   ],
   "optionalDependencies": {

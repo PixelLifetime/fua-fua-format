@@ -20,6 +20,8 @@ You can use the formatter in two main ways:
 
 ### Use in your own project (npm)
 
+**Angular / npm integration:** [packages/fua-fua/README.md](packages/fua-fua/README.md)
+
 Install formatter + plugins:
 
 ```bash
@@ -56,15 +58,22 @@ Create `.fua/config.json` in your project root:
 }
 ```
 
-Add scripts to your app `package.json`:
+Add scripts to your app `package.json` (no custom Node wrapper required):
 
 ```json
 {
   "scripts": {
-    "format:html": "fua-fua --input \"src/**/*.html\" --config .fua/config.json",
-    "format:html:file": "fua-fua --input \"src/app/app.component.html\" --config .fua/config.json --output \"src/app/app.component.html\""
+    "format:html": "fua-fua --all --config .fua/config.json",
+    "format:html:staged": "fua-fua --only-staged --config .fua/config.json",
+    "format:html:check": "fua-fua --check --changed --config .fua/config.json"
   }
 }
+```
+
+Single file:
+
+```bash
+npx fua-fua --input src/app/app.component.html --output src/app/app.component.html --config .fua/config.json
 ```
 
 Run:
@@ -73,28 +82,55 @@ Run:
 npm run format:html
 ```
 
-### Optional: format only changed HTML files in pre-commit
+### Pre-commit with Husky
 
-Install Husky:
+Install Husky in your app repo:
 
 ```bash
-npm i -D husky
+npm i -D husky fua-fua
 npx husky init
 ```
 
-Put this in `.husky/pre-commit`:
+Create `.fua/config.json` with formatter options plus file scope:
+
+```json
+{
+  "indent_size": 2,
+  "use_tabs": false,
+  "print_width": 100,
+  "include": ["**/*.html"],
+  "exclude": ["\\.ts$", "pop-up\\.component\\.html"],
+  "plugins": []
+}
+```
+
+- `include`: glob patterns for files to consider (default `["*"]` = everything not excluded).
+- `exclude`: regex patterns, or plain substrings when not valid regex.
+
+Copy the hook shipped with the npm package, or add this to `.husky/pre-commit`:
 
 ```sh
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-git diff --cached --name-only --diff-filter=ACMR \
-  | grep -E '\.html$' \
-  | while read -r file; do
-      npx fua-fua --input "$file" --config .fua/config.json --output "$file" || exit 1
-      git add "$file"
-    done
+npx fua-fua --only-staged --config .fua/config.json
 ```
+
+(`node_modules/fua-fua/husky/pre-commit` is a ready-made template.)
+
+To format the whole project instead of staged files:
+
+```bash
+npx fua-fua --all --config .fua/config.json
+```
+
+### CI format check (consumer apps)
+
+In your application repo, add a PR job that runs:
+
+```bash
+npx fua-fua --check --changed --config .fua/config.json
+```
+
+See [packages/fua-fua/README.md](packages/fua-fua/README.md) for a full workflow example.
 
 ### Develop from Rust source
 
@@ -116,6 +152,10 @@ cargo run -p cli -- --input examples/sample.html --config examples/config.json -
 * `--indent-size <number>`: Override the indent size explicitly.
 * `--use-tabs <bool>`: Override the whitespace strategy explicitly.
 * `--plugin <file>`: Load a compiled WASM plugin. Repeat to load multiple plugins.
+* `--only-staged`: Format git-staged files matching config `include` / `exclude` (for pre-commit).
+* `--all`: Format all project files matching config `include` / `exclude`.
+* `--changed`: Format files changed on the current branch (for CI; uses `GITHUB_BASE_REF` when set).
+* `--check`: Verify formatting without writing; exits with an error if any file needs changes.
 
 Multi-file behavior:
 - If the input pattern resolves to **one** file, `--output` is supported.
@@ -181,6 +221,10 @@ Fua Fua Format supports the following configuration properties directly fed via 
   Backward-compatible single-plugin entry. New configs should prefer `plugins`.
 * `plugins[].options` *(Object, Plugin-specific)*
   Arbitrary JSON options forwarded to the selected plugin on each hook request.
+* `include` *(Array of strings, Default: `["*"]`)*
+  Glob patterns for files to include when using `--only-staged` or `--all`.
+* `exclude` *(Array of strings, Default: `[]`)*
+  Regex patterns (or plain path substrings) for files to skip.
 
 ### Tailwind Plugin
 

@@ -31,4 +31,22 @@ pub(crate) struct Args {
     /// Path to a compiled .wasm formatter plugin. Repeat to load multiple plugins.
     #[arg(long)]
     pub(crate) plugin: Vec<PathBuf>,
+
+    /// Format only git-staged files that match config include/exclude rules.
+    /// Intended for pre-commit hooks (default Husky behavior).
+    #[arg(long, conflicts_with_all = ["all", "changed"])]
+    pub(crate) only_staged: bool,
+
+    /// Format all project files that match config include/exclude rules.
+    #[arg(long, conflicts_with_all = ["only_staged", "changed"])]
+    pub(crate) all: bool,
+
+    /// Format files changed on the current branch (vs merge base). For CI on pull requests.
+    /// Base ref: `GITHUB_BASE_REF` / `FUA_BASE_REF`, else `origin/master`.
+    #[arg(long, conflicts_with_all = ["only_staged", "all"])]
+    pub(crate) changed: bool,
+
+    /// Verify files are formatted; do not write. Exits with an error when changes are needed.
+    #[arg(long)]
+    pub(crate) check: bool,
 }

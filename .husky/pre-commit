@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Example pre-commit hook for consumer apps (not wired in this repo).
+# Copy to your Angular project after: npm i -D husky fua-fua && npx husky init
+#
+#   cp node_modules/fua-fua/husky/pre-commit .husky/pre-commit
+#   chmod +x .husky/pre-commit
+#
+# Or use this one-liner in your app's .husky/pre-commit:
+#   npx fua-fua --only-staged --config .fua/config.json
+
+exit 0
